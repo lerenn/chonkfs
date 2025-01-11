@@ -27,6 +27,7 @@ var (
 	_ fs.NodeMkdirer   = (*directory)(nil)
 	_ fs.NodeRmdirer   = (*directory)(nil)
 	_ fs.NodeReaddirer = (*directory)(nil)
+	_ fs.NodeSetattrer = (*directory)(nil)
 	_ fs.NodeUnlinker  = (*directory)(nil)
 )
 
@@ -51,17 +52,12 @@ func (d *directory) Create(
 	}
 
 	// Return an inode with the chonkfs directory
-	// TODO: implement file handler
 	return d.NewInode(ctx, f, fs.StableAttr{Mode: syscall.S_IFREG}), f, fuse.FOPEN_DIRECT_IO, fs.OK
 }
 
-func (d *directory) Getattr(ctx context.Context, f fs.FileHandle, out *fuse.AttrOut) syscall.Errno {
+func (d *directory) Getattr(ctx context.Context, fh fs.FileHandle, out *fuse.AttrOut) syscall.Errno {
 	debugf("directory.Getattr\n")
-
-	// Nothing to do for the moment.
-	// Please open a ticket if needed.
-
-	return fs.OK
+	return d.backendDirectory.GetAttributes(ctx, &out.Attr)
 }
 
 func (d *directory) Lookup(ctx context.Context, name string, out *fuse.EntryOut) (*fs.Inode, syscall.Errno) {
@@ -88,7 +84,7 @@ func (d *directory) Lookup(ctx context.Context, name string, out *fuse.EntryOut)
 
 		// Set mode
 		var attrOut fuse.AttrOut
-		backendChildFile.Getattr(ctx, &attrOut)
+		backendChildFile.GetAttributes(ctx, &attrOut.Attr)
 		out.Attr = attrOut.Attr
 		out.Mode = 0755 // TODO: fixme
 
@@ -136,6 +132,12 @@ func (d *directory) Rmdir(ctx context.Context, name string) syscall.Errno {
 }
 
 func (d *directory) Unlink(ctx context.Context, name string) syscall.Errno {
-	debugf("directory.Rmdir\n")
+	debugf("directory.Unlink\n")
 	return d.backendDirectory.RemoveFile(ctx, name)
+}
+
+func (d *directory) Setattr(ctx context.Context, f fs.FileHandle, in *fuse.SetAttrIn, out *fuse.AttrOut) syscall.Errno {
+	debugf("directory.Setattr\n")
+	d.backendDirectory.SetAttributes(ctx, in)
+	return fs.OK
 }

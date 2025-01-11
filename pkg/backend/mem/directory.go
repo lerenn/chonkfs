@@ -10,6 +10,7 @@ import (
 )
 
 type directory struct {
+	attr  fuse.Attr
 	dirs  map[string]*directory
 	files map[string]*file
 }
@@ -135,5 +136,15 @@ func (dir *directory) RemoveFile(ctx context.Context, name string) syscall.Errno
 	// Remove it from memory
 	delete(dir.files, name)
 
+	return fs.OK
+}
+
+func (dir *directory) GetAttributes(ctx context.Context, attr *fuse.Attr) syscall.Errno {
+	*attr = dir.attr
+	return fs.OK
+}
+
+func (dir *directory) SetAttributes(ctx context.Context, in *fuse.SetAttrIn) syscall.Errno {
+	// TODO
 	return fs.OK
 }

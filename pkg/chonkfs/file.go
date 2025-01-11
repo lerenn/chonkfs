@@ -32,7 +32,7 @@ type file struct {
 
 func (fl *file) Getattr(ctx context.Context, out *fuse.AttrOut) (errno syscall.Errno) {
 	debugf("file.Getattr\n")
-	return fl.backendFile.Getattr(ctx, out)
+	return fl.backendFile.GetAttributes(ctx, &out.Attr)
 }
 
 func (fl *file) Read(ctx context.Context, dest []byte, off int64) (fuse.ReadResult, syscall.Errno) {
@@ -56,18 +56,23 @@ func (fl *file) Open(ctx context.Context, flags uint32) (fh fs.FileHandle, fuseF
 	return fl, fuse.FOPEN_DIRECT_IO, fs.OK
 }
 
-func (fl *file) Setattr(ctx context.Context, f fs.FileHandle, in *fuse.SetAttrIn, out *fuse.AttrOut) syscall.Errno {
-	debugf("file.Setattr\n")
-
-	// Nothing to do for the moment.
-	// Please open a ticket if needed.
-
-	return fs.OK
-}
-
 func (fl *file) Write(ctx context.Context, data []byte, off int64) (written uint32, errno syscall.Errno) {
 	debugf("file.Write\n")
 
 	// Write content to file
 	return fl.backendFile.Write(ctx, data, off)
+}
+
+func (fl *file) Fsync(ctx context.Context, flags uint32) syscall.Errno {
+	debugf("file.Fsync\n")
+
+	// Nothing to do yet.
+	// Please open a ticket if you need it
+
+	return fs.OK
+}
+
+func (fl *file) Setattr(ctx context.Context, f fs.FileHandle, in *fuse.SetAttrIn, out *fuse.AttrOut) syscall.Errno {
+	debugf("file.Setattr\n")
+	return fl.backendFile.SetAttributes(ctx, in)
 }

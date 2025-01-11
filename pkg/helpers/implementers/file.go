@@ -51,7 +51,7 @@ func (fi FileImplementer) Allocate(ctx context.Context, off uint64, size uint64,
 }
 
 func (fi FileImplementer) Flush(ctx context.Context) syscall.Errno {
-	fi.Detector(false, "Flush")
+	fi.Detector(true, "Flush")
 	return syscall.EOPNOTSUPP
 }
 
@@ -100,7 +100,7 @@ func (fi FileImplementer) Releasedir(ctx context.Context, releaseFlags uint32) {
 }
 
 func (fi FileImplementer) Release(ctx context.Context) syscall.Errno {
-	fi.Detector(false, "Release")
+	fi.Detector(true, "Release")
 	return syscall.EOPNOTSUPP
 }
 

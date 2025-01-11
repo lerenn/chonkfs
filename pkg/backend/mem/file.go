@@ -9,6 +9,7 @@ import (
 )
 
 type file struct {
+	attr    fuse.Attr
 	content []byte
 }
 
@@ -18,8 +19,13 @@ func newEmptyFile() *file {
 	}
 }
 
-func (f *file) Getattr(ctx context.Context, out *fuse.AttrOut) (errno syscall.Errno) {
-	out.Size = uint64(len(f.content))
+func (f *file) GetAttributes(ctx context.Context, attr *fuse.Attr) (errno syscall.Errno) {
+	*attr = f.attr
+	return fs.OK
+}
+
+func (f *file) SetAttributes(ctx context.Context, in *fuse.SetAttrIn) syscall.Errno {
+	// TODO
 	return fs.OK
 }
 
@@ -36,6 +42,9 @@ func (f *file) Write(ctx context.Context, data []byte, off int64) (written uint3
 
 	// Save the data
 	f.content = content
+
+	// Update attributes
+	f.attr.Size = uint64(len(f.content))
 
 	return uint32(len(data)), fs.OK
 }

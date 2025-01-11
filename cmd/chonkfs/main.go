@@ -30,7 +30,10 @@ var rootCmd = &cobra.Command{
 
 		// Create server
 		// TODO: make backend configurable
-		server, err := fs.Mount(path, chonkfs.NewRoot(mem.New()), &fs.Options{})
+		server, err := fs.Mount(path, chonkfs.NewRoot(mem.New()), &fs.Options{
+			UID: uint32(os.Getuid()),
+			GID: uint32(os.Getgid()),
+		})
 		if err != nil {
 			return err
 		}

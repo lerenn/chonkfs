@@ -15,6 +15,8 @@ type Directory interface {
 	// Self
 
 	ListEntries(ctx context.Context) ([]fuse.DirEntry, syscall.Errno)
+	GetAttributes(ctx context.Context, attr *fuse.Attr) syscall.Errno
+	SetAttributes(ctx context.Context, in *fuse.SetAttrIn) syscall.Errno
 
 	// Child directories
 
@@ -30,7 +32,8 @@ type Directory interface {
 }
 
 type File interface {
-	Getattr(ctx context.Context, out *fuse.AttrOut) (errno syscall.Errno)
+	GetAttributes(ctx context.Context, attr *fuse.Attr) syscall.Errno
+	SetAttributes(ctx context.Context, in *fuse.SetAttrIn) syscall.Errno
 	Read(ctx context.Context, off int64) ([]byte, syscall.Errno)
 	Write(ctx context.Context, data []byte, off int64) (written uint32, errno syscall.Errno)
 }
