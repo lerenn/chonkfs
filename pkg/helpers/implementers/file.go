@@ -30,7 +30,6 @@ var (
 	_ fs.FileReleasedirer    = (*FileImplementer)(nil)
 	_ fs.FileReleaser        = (*FileImplementer)(nil)
 	_ fs.FileSeekdirer       = (*FileImplementer)(nil)
-	_ fs.FileSeekdirer       = (*FileImplementer)(nil)
 	_ fs.FileSetattrer       = (*FileImplementer)(nil)
 	_ fs.FileSetlker         = (*FileImplementer)(nil)
 	_ fs.FileSetlkwer        = (*FileImplementer)(nil)
@@ -40,9 +39,9 @@ var (
 
 func (fi FileImplementer) Detector(skippable bool, format string, args ...interface{}) {
 	if skippable {
-		fmt.Printf("SKIPPABLE: FileImplementer."+format, args...)
+		fmt.Printf("SKIPPABLE: FileImplementer."+format+"\n", args...)
 	} else {
-		fmt.Printf("NOT IMPLEMENTED: FileImplementer."+format, args...)
+		fmt.Printf("NOT IMPLEMENTED: FileImplementer."+format+"\n", args...)
 	}
 }
 

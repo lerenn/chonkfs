@@ -11,8 +11,9 @@ import (
 
 // Capabilities that the file struct should implements
 var (
-	_ fs.FileReader = (*file)(nil)
-	_ fs.FileWriter = (*file)(nil)
+	_ fs.FileGetattrer = (*file)(nil)
+	_ fs.FileReader    = (*file)(nil)
+	_ fs.FileWriter    = (*file)(nil)
 
 	_ fs.InodeEmbedder = (*file)(nil)
 
@@ -27,6 +28,11 @@ type file struct {
 
 	// implementers.NodeImplementer
 	// implementers.FileImplementer
+}
+
+func (fl *file) Getattr(ctx context.Context, out *fuse.AttrOut) (errno syscall.Errno) {
+	debugf("file.Getattr\n")
+	return fl.backendFile.Getattr(ctx, out)
 }
 
 func (fl *file) Read(ctx context.Context, dest []byte, off int64) (fuse.ReadResult, syscall.Errno) {
@@ -47,7 +53,7 @@ func (fl *file) Open(ctx context.Context, flags uint32) (fh fs.FileHandle, fuseF
 	// Nothing to do for the moment.
 	// Please open a ticket if needed.
 
-	return fl, fuse.FOPEN_NOFLUSH | fuse.FOPEN_DIRECT_IO, fs.OK
+	return fl, fuse.FOPEN_DIRECT_IO, fs.OK
 }
 
 func (fl *file) Setattr(ctx context.Context, f fs.FileHandle, in *fuse.SetAttrIn, out *fuse.AttrOut) syscall.Errno {

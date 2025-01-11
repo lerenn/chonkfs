@@ -25,7 +25,9 @@ var (
 	_ fs.NodeGetattrer = (*directory)(nil)
 	_ fs.NodeLookuper  = (*directory)(nil)
 	_ fs.NodeMkdirer   = (*directory)(nil)
+	_ fs.NodeRmdirer   = (*directory)(nil)
 	_ fs.NodeReaddirer = (*directory)(nil)
+	_ fs.NodeUnlinker  = (*directory)(nil)
 )
 
 func (d *directory) Create(
@@ -38,16 +40,19 @@ func (d *directory) Create(
 	debugf("directory.Create\n")
 
 	// Create a new child file from backend
-	backendChildFile, errno := d.backendDirectory.CreateChildFile(ctx, name)
+	backendChildFile, errno := d.backendDirectory.CreateFile(ctx, name)
 	if errno != fs.OK {
 		return nil, nil, 0, errno
 	}
 
+	// Create chonkfs File
+	f := &file{
+		backendFile: backendChildFile,
+	}
+
 	// Return an inode with the chonkfs directory
 	// TODO: implement file handler
-	return d.NewInode(ctx, &file{
-		backendFile: backendChildFile,
-	}, fs.StableAttr{Mode: syscall.S_IFREG}), 0, 0, fs.OK
+	return d.NewInode(ctx, f, fs.StableAttr{Mode: syscall.S_IFREG}), f, fuse.FOPEN_DIRECT_IO, fs.OK
 }
 
 func (d *directory) Getattr(ctx context.Context, f fs.FileHandle, out *fuse.AttrOut) syscall.Errno {
@@ -60,16 +65,15 @@ func (d *directory) Getattr(ctx context.Context, f fs.FileHandle, out *fuse.Attr
 }
 
 func (d *directory) Lookup(ctx context.Context, name string, out *fuse.EntryOut) (*fs.Inode, syscall.Errno) {
-	debugf("directory.Lookup\n")
+	debugf("directory.Lookup [name=%q]\n", name)
 
 	// Get backend child directory
-	backendChildDir, errno := d.backendDirectory.GetChildDirectory(ctx, name)
+	backendChildDir, errno := d.backendDirectory.GetDirectory(ctx, name)
 
 	switch errno {
 	case fs.OK:
 		// Set mode
-		// TODO: fixme
-		out.Mode = 1755
+		out.Mode = 1755 // TODO: fixme
 
 		// Return an inode with the chonkfs directory
 		return d.NewInode(ctx, &directory{
@@ -77,14 +81,16 @@ func (d *directory) Lookup(ctx context.Context, name string, out *fuse.EntryOut)
 		}, fs.StableAttr{Mode: syscall.S_IFDIR}), fs.OK
 	case syscall.ENOTDIR:
 		// Get backend file
-		backendChildFile, errno := d.backendDirectory.GetChildFile(ctx, name)
+		backendChildFile, errno := d.backendDirectory.GetFile(ctx, name)
 		if errno != fs.OK {
 			return nil, errno
 		}
 
 		// Set mode
-		// TODO: fixme
-		out.Mode = 0755
+		var attrOut fuse.AttrOut
+		backendChildFile.Getattr(ctx, &attrOut)
+		out.Attr = attrOut.Attr
+		out.Mode = 0755 // TODO: fixme
 
 		// Return an inode with the chonkfs directory
 		return d.NewInode(ctx, &file{
@@ -101,7 +107,7 @@ func (d *directory) Mkdir(ctx context.Context, name string, mode uint32, out *fu
 	debugf("directory.Mkdir\n")
 
 	// Create a new child directory from backend
-	backendChildDir, errno := d.backendDirectory.CreateChildDirectory(ctx, name)
+	backendChildDir, errno := d.backendDirectory.CreateDirectory(ctx, name)
 	if errno != fs.OK {
 		return nil, errno
 	}
@@ -116,10 +122,20 @@ func (d *directory) Readdir(ctx context.Context) (fs.DirStream, syscall.Errno) {
 	debugf("directory.Readdir\n")
 
 	// List entries from backend
-	l, errno := d.backendDirectory.ListDirectoryEntries(ctx)
+	l, errno := d.backendDirectory.ListEntries(ctx)
 	if errno != fs.OK {
 		return nil, errno
 	}
 
 	return fs.NewListDirStream(l), fs.OK
+}
+
+func (d *directory) Rmdir(ctx context.Context, name string) syscall.Errno {
+	debugf("directory.Rmdir\n")
+	return d.backendDirectory.RemoveDirectory(ctx, name)
+}
+
+func (d *directory) Unlink(ctx context.Context, name string) syscall.Errno {
+	debugf("directory.Rmdir\n")
+	return d.backendDirectory.RemoveFile(ctx, name)
 }

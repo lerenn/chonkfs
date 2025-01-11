@@ -35,7 +35,7 @@ func (dir *directory) checkIfFileOrDirectoryAlreadyExists(name string) syscall.E
 	return fs.OK
 }
 
-func (dir *directory) CreateChildDirectory(ctx context.Context, name string) (backend.Directory, syscall.Errno) {
+func (dir *directory) CreateDirectory(ctx context.Context, name string) (backend.Directory, syscall.Errno) {
 	// Check if it doesn't not exist already
 	if errno := dir.checkIfFileOrDirectoryAlreadyExists(name); errno != fs.OK {
 		return nil, errno
@@ -50,7 +50,7 @@ func (dir *directory) CreateChildDirectory(ctx context.Context, name string) (ba
 	return c, fs.OK
 }
 
-func (dir *directory) GetChildDirectory(ctx context.Context, name string) (backend.Directory, syscall.Errno) {
+func (dir *directory) GetDirectory(ctx context.Context, name string) (backend.Directory, syscall.Errno) {
 	// Check if this is not already a file
 	if _, ok := dir.files[name]; ok {
 		return nil, syscall.ENOTDIR
@@ -65,7 +65,7 @@ func (dir *directory) GetChildDirectory(ctx context.Context, name string) (backe
 	return d, fs.OK
 }
 
-func (dir *directory) GetChildFile(ctx context.Context, name string) (backend.File, syscall.Errno) {
+func (dir *directory) GetFile(ctx context.Context, name string) (backend.File, syscall.Errno) {
 	// Get and check if it exists
 	f, ok := dir.files[name]
 	if !ok {
@@ -75,7 +75,7 @@ func (dir *directory) GetChildFile(ctx context.Context, name string) (backend.Fi
 	return f, fs.OK
 }
 
-func (dir *directory) ListDirectoryEntries(ctx context.Context) ([]fuse.DirEntry, syscall.Errno) {
+func (dir *directory) ListEntries(ctx context.Context) ([]fuse.DirEntry, syscall.Errno) {
 	list := make([]fuse.DirEntry, 0, len(dir.dirs)+len(dir.files))
 
 	// Add directories
@@ -99,7 +99,7 @@ func (dir *directory) ListDirectoryEntries(ctx context.Context) ([]fuse.DirEntry
 	return list, fs.OK
 }
 
-func (dir *directory) CreateChildFile(ctx context.Context, name string) (backend.File, syscall.Errno) {
+func (dir *directory) CreateFile(ctx context.Context, name string) (backend.File, syscall.Errno) {
 	// Check if it doesn't not exist already
 	if errno := dir.checkIfFileOrDirectoryAlreadyExists(name); errno != fs.OK {
 		return nil, errno
@@ -112,4 +112,28 @@ func (dir *directory) CreateChildFile(ctx context.Context, name string) (backend
 	dir.files[name] = f
 
 	return f, fs.OK
+}
+
+func (dir *directory) RemoveDirectory(ctx context.Context, name string) syscall.Errno {
+	// Check if it exists
+	if _, ok := dir.dirs[name]; !ok {
+		return syscall.ENOENT
+	}
+
+	// Remove it from memory
+	delete(dir.dirs, name)
+
+	return fs.OK
+}
+
+func (dir *directory) RemoveFile(ctx context.Context, name string) syscall.Errno {
+	// Check if it exists
+	if _, ok := dir.files[name]; !ok {
+		return syscall.ENOENT
+	}
+
+	// Remove it from memory
+	delete(dir.files, name)
+
+	return fs.OK
 }

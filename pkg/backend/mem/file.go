@@ -5,6 +5,7 @@ import (
 	"syscall"
 
 	"github.com/hanwen/go-fuse/v2/fs"
+	"github.com/hanwen/go-fuse/v2/fuse"
 )
 
 type file struct {
@@ -15,6 +16,11 @@ func newEmptyFile() *file {
 	return &file{
 		content: make([]byte, 0),
 	}
+}
+
+func (f *file) Getattr(ctx context.Context, out *fuse.AttrOut) (errno syscall.Errno) {
+	out.Size = uint64(len(f.content))
+	return fs.OK
 }
 
 func (f *file) Read(ctx context.Context, off int64) ([]byte, syscall.Errno) {
