@@ -6,7 +6,7 @@ import (
 
 	"github.com/hanwen/go-fuse/v2/fs"
 	"github.com/hanwen/go-fuse/v2/fuse"
-	"github.com/lerenn/chonkfs/pkg/backend"
+	"github.com/lerenn/chonkfs/pkg/backends"
 )
 
 // Capabilities that the file struct should implements
@@ -24,7 +24,7 @@ var (
 )
 
 type file struct {
-	backendFile backend.File
+	backendFile backends.File
 	name        string
 
 	fs.Inode

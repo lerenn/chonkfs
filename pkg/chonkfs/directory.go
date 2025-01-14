@@ -6,11 +6,11 @@ import (
 
 	"github.com/hanwen/go-fuse/v2/fs"
 	"github.com/hanwen/go-fuse/v2/fuse"
-	"github.com/lerenn/chonkfs/pkg/backend"
+	"github.com/lerenn/chonkfs/pkg/backends"
 )
 
 type directory struct {
-	backendDirectory backend.Directory
+	backendDirectory backends.Directory
 
 	fs.Inode
 

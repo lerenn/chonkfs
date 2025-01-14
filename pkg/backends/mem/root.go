@@ -1,10 +1,10 @@
 package mem
 
 import (
-	"github.com/lerenn/chonkfs/pkg/backend"
+	"github.com/lerenn/chonkfs/pkg/backends"
 )
 
-var _ backend.Root = (*root)(nil)
+var _ backends.Root = (*root)(nil)
 
 type root struct {
 	*directory

@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/hanwen/go-fuse/v2/fs"
-	"github.com/lerenn/chonkfs/pkg/backend/mem"
+	"github.com/lerenn/chonkfs/pkg/backends/mem"
 	"github.com/lerenn/chonkfs/pkg/chonkfs"
 	"github.com/spf13/cobra"
 )

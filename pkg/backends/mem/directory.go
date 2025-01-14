@@ -6,7 +6,7 @@ import (
 
 	"github.com/hanwen/go-fuse/v2/fs"
 	"github.com/hanwen/go-fuse/v2/fuse"
-	"github.com/lerenn/chonkfs/pkg/backend"
+	"github.com/lerenn/chonkfs/pkg/backends"
 )
 
 type directory struct {
@@ -36,7 +36,7 @@ func (dir *directory) checkIfFileOrDirectoryAlreadyExists(name string) syscall.E
 	return fs.OK
 }
 
-func (dir *directory) CreateDirectory(ctx context.Context, name string) (backend.Directory, syscall.Errno) {
+func (dir *directory) CreateDirectory(ctx context.Context, name string) (backends.Directory, syscall.Errno) {
 	// Check if it doesn't not exist already
 	if errno := dir.checkIfFileOrDirectoryAlreadyExists(name); errno != fs.OK {
 		return nil, errno
@@ -51,7 +51,7 @@ func (dir *directory) CreateDirectory(ctx context.Context, name string) (backend
 	return c, fs.OK
 }
 
-func (dir *directory) GetDirectory(ctx context.Context, name string) (backend.Directory, syscall.Errno) {
+func (dir *directory) GetDirectory(ctx context.Context, name string) (backends.Directory, syscall.Errno) {
 	// Check if this is not already a file
 	if _, ok := dir.files[name]; ok {
 		return nil, syscall.ENOTDIR
@@ -66,7 +66,7 @@ func (dir *directory) GetDirectory(ctx context.Context, name string) (backend.Di
 	return d, fs.OK
 }
 
-func (dir *directory) GetFile(ctx context.Context, name string) (backend.File, syscall.Errno) {
+func (dir *directory) GetFile(ctx context.Context, name string) (backends.File, syscall.Errno) {
 	// Get and check if it exists
 	f, ok := dir.files[name]
 	if !ok {
@@ -100,7 +100,7 @@ func (dir *directory) ListEntries(ctx context.Context) ([]fuse.DirEntry, syscall
 	return list, fs.OK
 }
 
-func (dir *directory) CreateFile(ctx context.Context, name string) (backend.File, syscall.Errno) {
+func (dir *directory) CreateFile(ctx context.Context, name string) (backends.File, syscall.Errno) {
 	// Check if it doesn't not exist already
 	if errno := dir.checkIfFileOrDirectoryAlreadyExists(name); errno != fs.OK {
 		return nil, errno

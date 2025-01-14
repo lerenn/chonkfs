@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/hanwen/go-fuse/v2/fs"
-	"github.com/lerenn/chonkfs/pkg/backend"
+	"github.com/lerenn/chonkfs/pkg/backends"
 )
 
 // Capabilities that the root struct should implements
@@ -14,7 +14,7 @@ type Root struct {
 	directory
 }
 
-func NewRoot(backend backend.Root) *Root {
+func NewRoot(backend backends.Root) *Root {
 	return &Root{
 		directory: directory{
 			backendDirectory: backend,
