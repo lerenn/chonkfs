@@ -2,6 +2,7 @@ package mem
 
 import (
 	"context"
+	"slices"
 	"syscall"
 
 	"github.com/hanwen/go-fuse/v2/fs"
@@ -10,6 +11,7 @@ import (
 
 type file struct {
 	attr    fuse.Attr
+	cache   []byte
 	content []byte
 }
 
@@ -30,21 +32,32 @@ func (f *file) SetAttributes(ctx context.Context, in *fuse.SetAttrIn) syscall.Er
 }
 
 func (f *file) Read(ctx context.Context, off int64) ([]byte, syscall.Errno) {
+	if len(f.cache) == 0 {
+		f.cache = slices.Clone(f.content)
+	}
+
 	return f.content[off:len(f.content)], fs.OK
 }
 
-func (f *file) Write(ctx context.Context, data []byte, off int64) (written uint32, errno syscall.Errno) {
+func (f *file) WriteCache(ctx context.Context, data []byte, off int64) (written uint32, errno syscall.Errno) {
 	// Get everything before off
-	content := f.content[:off]
+	cache := f.cache[:off]
 
 	// Add the data
-	content = append(content, data...)
+	cache = append(cache, data...)
 
 	// Save the data
-	f.content = content
-
-	// Update attributes
-	f.attr.Size = uint64(len(f.content))
+	f.cache = cache
 
 	return uint32(len(data)), fs.OK
+}
+
+func (f *file) Sync(ctx context.Context) syscall.Errno {
+	// Write to content
+	f.content = slices.Clone(f.cache)
+
+	// Update attributes based on content
+	f.attr.Size = uint64(len(f.content))
+
+	return fs.OK
 }

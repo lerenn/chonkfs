@@ -1,6 +1,8 @@
 package chonkfs
 
-import "fmt"
+import (
+	"fmt"
+)
 
 var debugActivated = false
 

@@ -38,7 +38,7 @@ func (d *directory) Create(
 	mode uint32,
 	out *fuse.EntryOut,
 ) (node *fs.Inode, fh fs.FileHandle, fuseFlags uint32, errno syscall.Errno) {
-	debugf("directory.Create\n")
+	debugf("directory.Create [name=%q]\n", name)
 
 	// Create a new child file from backend
 	backendChildFile, errno := d.backendDirectory.CreateFile(ctx, name)
@@ -49,6 +49,7 @@ func (d *directory) Create(
 	// Create chonkfs File
 	f := &file{
 		backendFile: backendChildFile,
+		name:        name,
 	}
 
 	// Return an inode with the chonkfs directory
@@ -91,6 +92,7 @@ func (d *directory) Lookup(ctx context.Context, name string, out *fuse.EntryOut)
 		// Return an inode with the chonkfs directory
 		return d.NewInode(ctx, &file{
 			backendFile: backendChildFile,
+			name:        name,
 		}, fs.StableAttr{Mode: syscall.S_IFREG}), fs.OK
 
 	default:
@@ -132,7 +134,7 @@ func (d *directory) Rmdir(ctx context.Context, name string) syscall.Errno {
 }
 
 func (d *directory) Unlink(ctx context.Context, name string) syscall.Errno {
-	debugf("directory.Unlink\n")
+	debugf("directory.Unlink [name=%q]\n", name)
 	return d.backendDirectory.RemoveFile(ctx, name)
 }
 
