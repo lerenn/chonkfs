@@ -25,12 +25,9 @@ var rootCmd = &cobra.Command{
 			return fmt.Errorf("path is required")
 		}
 
-		// Set debug mode to true
-		chonkfs.SetDebug(true)
-
 		// Create server
 		// TODO: make backend configurable
-		server, err := fs.Mount(path, chonkfs.NewDirectory(mem.New()), &fs.Options{
+		server, err := fs.Mount(path, chonkfs.New(mem.New()), &fs.Options{
 			UID: uint32(os.Getuid()),
 			GID: uint32(os.Getgid()),
 		})

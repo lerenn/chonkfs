@@ -2,6 +2,7 @@ package chonkfs
 
 import (
 	"context"
+	"log"
 	"syscall"
 
 	"github.com/hanwen/go-fuse/v2/fs"
@@ -24,8 +25,9 @@ var (
 )
 
 type File struct {
-	backendFile backends.File
-	name        string
+	backend backends.File
+	logger  *log.Logger
+	name    string
 
 	fs.Inode
 
@@ -34,10 +36,10 @@ type File struct {
 }
 
 func (fl *File) Getattr(ctx context.Context, out *fuse.AttrOut) (errno syscall.Errno) {
-	debugf("file[name=%q].Getattr\n", fl.name)
+	fl.logger.Printf("File[%s].Getattr(...)\n", fl.name)
 
 	// Get attributes from backend
-	attr, errno := fl.backendFile.GetAttributes(ctx)
+	attr, errno := fl.backend.GetAttributes(ctx)
 	if errno != fs.OK {
 		return errno
 	}
@@ -49,10 +51,10 @@ func (fl *File) Getattr(ctx context.Context, out *fuse.AttrOut) (errno syscall.E
 }
 
 func (fl *File) Read(ctx context.Context, dest []byte, off int64) (fuse.ReadResult, syscall.Errno) {
-	debugf("file[name=%q].Read\n", fl.name)
+	fl.logger.Printf("File[%s].Read(...)\n", fl.name)
 
 	// Get content from file
-	content, errno := fl.backendFile.Read(ctx, off)
+	content, errno := fl.backend.Read(ctx, off)
 	if errno != fs.OK {
 		return nil, errno
 	}
@@ -61,7 +63,7 @@ func (fl *File) Read(ctx context.Context, dest []byte, off int64) (fuse.ReadResu
 }
 
 func (fl *File) Open(ctx context.Context, flags uint32) (fh fs.FileHandle, fuseFlags uint32, errno syscall.Errno) {
-	debugf("file[name=%q].Open\n", fl.name)
+	fl.logger.Printf("File[%s].Open(...)\n", fl.name)
 
 	// Nothing to do for the moment.
 	// Please open a ticket if needed.
@@ -70,27 +72,27 @@ func (fl *File) Open(ctx context.Context, flags uint32) (fh fs.FileHandle, fuseF
 }
 
 func (fl *File) Write(ctx context.Context, data []byte, off int64) (written uint32, errno syscall.Errno) {
-	debugf("file[name=%q].Write\n", fl.name)
+	fl.logger.Printf("File[%s].Write(...)\n", fl.name)
 
 	// Write content to file
-	return fl.backendFile.WriteCache(ctx, data, off)
+	return fl.backend.WriteCache(ctx, data, off)
 }
 
 func (fl *File) Fsync(ctx context.Context, flags uint32) syscall.Errno {
-	debugf("file[name=%q].Fsync\n", fl.name)
+	fl.logger.Printf("File[%s].Fsync(...)\n", fl.name)
 
 	// Sync cache on backend with underlying support
-	return fl.backendFile.Sync(ctx)
+	return fl.backend.Sync(ctx)
 }
 
 func (fl *File) Setattr(ctx context.Context, f fs.FileHandle, in *fuse.SetAttrIn, out *fuse.AttrOut) syscall.Errno {
-	debugf("file[name=%q].Setattr\n", fl.name)
-	return fl.backendFile.SetAttributes(ctx, in)
+	fl.logger.Printf("File[%s].Setattr(...)\n", fl.name)
+	return fl.backend.SetAttributes(ctx, in)
 }
 
 func (fl *File) Flush(ctx context.Context) syscall.Errno {
-	debugf("file[name=%q].Flush\n", fl.name)
+	fl.logger.Printf("File[%s].Flush(...)\n", fl.name)
 
 	// Sync cache on backend with underlying support
-	return fl.backendFile.Sync(ctx)
+	return fl.backend.Sync(ctx)
 }
