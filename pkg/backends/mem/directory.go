@@ -9,6 +9,8 @@ import (
 	"github.com/lerenn/chonkfs/pkg/backends"
 )
 
+var _ backends.Directory = (*directory)(nil)
+
 type directory struct {
 	attr  fuse.Attr
 	dirs  map[string]*directory
@@ -139,12 +141,36 @@ func (dir *directory) RemoveFile(ctx context.Context, name string) syscall.Errno
 	return fs.OK
 }
 
-func (dir *directory) GetAttributes(ctx context.Context, attr *fuse.Attr) syscall.Errno {
-	*attr = dir.attr
-	return fs.OK
+func (dir *directory) GetAttributes(ctx context.Context) (fuse.Attr, syscall.Errno) {
+	return dir.attr, fs.OK
 }
 
 func (dir *directory) SetAttributes(ctx context.Context, in *fuse.SetAttrIn) syscall.Errno {
 	// TODO
+	return fs.OK
+}
+
+func (dir *directory) RenameNode(ctx context.Context, name string, newParent backends.Directory, newName string) syscall.Errno {
+	// Get the directory or the file
+	d, dirExist := dir.dirs[name]
+	f, fileExist := dir.files[name]
+
+	// Check if it doesn't not exist already
+	if errno := newParent.(*directory).checkIfFileOrDirectoryAlreadyExists(newName); errno != fs.OK {
+		return errno
+	}
+
+	// Add it to new parent and remove it from current parent
+	switch {
+	case dirExist:
+		newParent.(*directory).dirs[newName] = d
+		delete(dir.dirs, name)
+	case fileExist:
+		newParent.(*directory).files[newName] = f
+		delete(dir.files, name)
+	default:
+		return syscall.ENOENT
+	}
+
 	return fs.OK
 }

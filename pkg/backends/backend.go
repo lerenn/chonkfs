@@ -9,16 +9,15 @@ import (
 	"github.com/hanwen/go-fuse/v2/fuse"
 )
 
-type Root interface {
-	Directory
-}
-
 type Directory interface {
 	// Self
 
 	ListEntries(ctx context.Context) ([]fuse.DirEntry, syscall.Errno)
-	GetAttributes(ctx context.Context, attr *fuse.Attr) syscall.Errno
+	GetAttributes(ctx context.Context) (fuse.Attr, syscall.Errno)
 	SetAttributes(ctx context.Context, in *fuse.SetAttrIn) syscall.Errno
+
+	// Child nodes
+	RenameNode(ctx context.Context, name string, newParent Directory, newName string) syscall.Errno
 
 	// Child directories
 
@@ -34,7 +33,7 @@ type Directory interface {
 }
 
 type File interface {
-	GetAttributes(ctx context.Context, attr *fuse.Attr) syscall.Errno
+	GetAttributes(ctx context.Context) (fuse.Attr, syscall.Errno)
 	SetAttributes(ctx context.Context, in *fuse.SetAttrIn) syscall.Errno
 	Read(ctx context.Context, off int64) ([]byte, syscall.Errno)
 	WriteCache(ctx context.Context, data []byte, off int64) (written uint32, errno syscall.Errno)

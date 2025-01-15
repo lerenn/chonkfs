@@ -7,7 +7,10 @@ import (
 
 	"github.com/hanwen/go-fuse/v2/fs"
 	"github.com/hanwen/go-fuse/v2/fuse"
+	"github.com/lerenn/chonkfs/pkg/backends"
 )
+
+var _ backends.File = (*file)(nil)
 
 type file struct {
 	attr    fuse.Attr
@@ -21,9 +24,8 @@ func newEmptyFile() *file {
 	}
 }
 
-func (f *file) GetAttributes(ctx context.Context, attr *fuse.Attr) (errno syscall.Errno) {
-	*attr = f.attr
-	return fs.OK
+func (f *file) GetAttributes(ctx context.Context) (fuse.Attr, syscall.Errno) {
+	return f.attr, fs.OK
 }
 
 func (f *file) SetAttributes(ctx context.Context, in *fuse.SetAttrIn) syscall.Errno {
