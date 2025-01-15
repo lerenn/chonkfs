@@ -1,6 +1,7 @@
 # ChonkFS
 
 FUSE file-system that split files in chunks and save them remotely.
+Pretty useful for protocols such as torrent based systems. 
 
 <center>
     <img src="./assets/chonker.png" alt="avatar" width="200"/>
