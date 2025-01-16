@@ -4,7 +4,6 @@ package backends
 
 import (
 	"context"
-	"syscall"
 
 	"github.com/hanwen/go-fuse/v2/fuse"
 )
@@ -12,30 +11,30 @@ import (
 type Directory interface {
 	// Self
 
-	ListEntries(ctx context.Context) ([]fuse.DirEntry, syscall.Errno)
-	GetAttributes(ctx context.Context) (fuse.Attr, syscall.Errno)
-	SetAttributes(ctx context.Context, in *fuse.SetAttrIn) syscall.Errno
+	ListEntries(ctx context.Context) ([]fuse.DirEntry, error)
+	GetAttributes(ctx context.Context) (fuse.Attr, error)
+	SetAttributes(ctx context.Context, in *fuse.SetAttrIn) error
 
 	// Child nodes
-	RenameNode(ctx context.Context, name string, newParent Directory, newName string) syscall.Errno
+	RenameNode(ctx context.Context, name string, newParent Directory, newName string) error
 
 	// Child directories
 
-	CreateDirectory(ctx context.Context, name string) (Directory, syscall.Errno)
-	GetDirectory(ctx context.Context, name string) (Directory, syscall.Errno)
-	RemoveDirectory(ctx context.Context, name string) syscall.Errno
+	CreateDirectory(ctx context.Context, name string) (Directory, error)
+	GetDirectory(ctx context.Context, name string) (Directory, error)
+	RemoveDirectory(ctx context.Context, name string) error
 
 	// Child files
 
-	CreateFile(ctx context.Context, name string) (File, syscall.Errno)
-	GetFile(ctx context.Context, name string) (File, syscall.Errno)
-	RemoveFile(ctx context.Context, name string) syscall.Errno
+	CreateFile(ctx context.Context, name string) (File, error)
+	GetFile(ctx context.Context, name string) (File, error)
+	RemoveFile(ctx context.Context, name string) error
 }
 
 type File interface {
-	GetAttributes(ctx context.Context) (fuse.Attr, syscall.Errno)
-	SetAttributes(ctx context.Context, in *fuse.SetAttrIn) syscall.Errno
-	Read(ctx context.Context, off int64) ([]byte, syscall.Errno)
-	WriteCache(ctx context.Context, data []byte, off int64) (written uint32, errno syscall.Errno)
-	Sync(ctx context.Context) syscall.Errno
+	GetAttributes(ctx context.Context) (fuse.Attr, error)
+	SetAttributes(ctx context.Context, in *fuse.SetAttrIn) error
+	Read(ctx context.Context, start, end uint64) ([]byte, error)
+	WriteCache(ctx context.Context, data []byte, off int64) (written uint32, errno error)
+	Sync(ctx context.Context) error
 }

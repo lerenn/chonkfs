@@ -2,9 +2,7 @@ package mem
 
 import (
 	"context"
-	"syscall"
 
-	"github.com/hanwen/go-fuse/v2/fs"
 	"github.com/hanwen/go-fuse/v2/fuse"
 	"github.com/lerenn/chonkfs/pkg/backends"
 )
@@ -24,24 +22,24 @@ func newEmptyDirectory() *directory {
 	}
 }
 
-func (dir *directory) checkIfFileOrDirectoryAlreadyExists(name string) syscall.Errno {
+func (dir *directory) checkIfFileOrDirectoryAlreadyExists(name string) error {
 	// Check in directories
 	if _, ok := dir.dirs[name]; ok {
-		return syscall.EEXIST
+		return backends.ErrAlreadyExists
 	}
 
 	// Check in files
 	if _, ok := dir.files[name]; ok {
-		return syscall.EEXIST
+		return backends.ErrAlreadyExists
 	}
 
-	return fs.OK
+	return nil
 }
 
-func (dir *directory) CreateDirectory(ctx context.Context, name string) (backends.Directory, syscall.Errno) {
+func (dir *directory) CreateDirectory(ctx context.Context, name string) (backends.Directory, error) {
 	// Check if it doesn't not exist already
-	if errno := dir.checkIfFileOrDirectoryAlreadyExists(name); errno != fs.OK {
-		return nil, errno
+	if err := dir.checkIfFileOrDirectoryAlreadyExists(name); err != nil {
+		return nil, err
 	}
 
 	// Create a new directory
@@ -50,35 +48,35 @@ func (dir *directory) CreateDirectory(ctx context.Context, name string) (backend
 	// Add it to childs
 	dir.dirs[name] = c
 
-	return c, fs.OK
+	return c, nil
 }
 
-func (dir *directory) GetDirectory(ctx context.Context, name string) (backends.Directory, syscall.Errno) {
+func (dir *directory) GetDirectory(ctx context.Context, name string) (backends.Directory, error) {
 	// Check if this is not already a file
 	if _, ok := dir.files[name]; ok {
-		return nil, syscall.ENOTDIR
+		return nil, backends.ErrNotDirectory
 	}
 
 	// Get and check if it exists
 	d, ok := dir.dirs[name]
 	if !ok {
-		return nil, syscall.ENOENT
+		return nil, backends.ErrNoEntry
 	}
 
-	return d, fs.OK
+	return d, nil
 }
 
-func (dir *directory) GetFile(ctx context.Context, name string) (backends.File, syscall.Errno) {
+func (dir *directory) GetFile(ctx context.Context, name string) (backends.File, error) {
 	// Get and check if it exists
 	f, ok := dir.files[name]
 	if !ok {
-		return nil, syscall.ENOENT
+		return nil, backends.ErrNoEntry
 	}
 
-	return f, fs.OK
+	return f, nil
 }
 
-func (dir *directory) ListEntries(ctx context.Context) ([]fuse.DirEntry, syscall.Errno) {
+func (dir *directory) ListEntries(ctx context.Context) ([]fuse.DirEntry, error) {
 	list := make([]fuse.DirEntry, 0, len(dir.dirs)+len(dir.files))
 
 	// Add directories
@@ -99,13 +97,13 @@ func (dir *directory) ListEntries(ctx context.Context) ([]fuse.DirEntry, syscall
 		})
 	}
 
-	return list, fs.OK
+	return list, nil
 }
 
-func (dir *directory) CreateFile(ctx context.Context, name string) (backends.File, syscall.Errno) {
+func (dir *directory) CreateFile(ctx context.Context, name string) (backends.File, error) {
 	// Check if it doesn't not exist already
-	if errno := dir.checkIfFileOrDirectoryAlreadyExists(name); errno != fs.OK {
-		return nil, errno
+	if err := dir.checkIfFileOrDirectoryAlreadyExists(name); err != nil {
+		return nil, err
 	}
 
 	// Create file
@@ -114,50 +112,50 @@ func (dir *directory) CreateFile(ctx context.Context, name string) (backends.Fil
 	// Add it to children
 	dir.files[name] = f
 
-	return f, fs.OK
+	return f, nil
 }
 
-func (dir *directory) RemoveDirectory(ctx context.Context, name string) syscall.Errno {
+func (dir *directory) RemoveDirectory(ctx context.Context, name string) error {
 	// Check if it exists
 	if _, ok := dir.dirs[name]; !ok {
-		return syscall.ENOENT
+		return backends.ErrNoEntry
 	}
 
 	// Remove it from memory
 	delete(dir.dirs, name)
 
-	return fs.OK
+	return nil
 }
 
-func (dir *directory) RemoveFile(ctx context.Context, name string) syscall.Errno {
+func (dir *directory) RemoveFile(ctx context.Context, name string) error {
 	// Check if it exists
 	if _, ok := dir.files[name]; !ok {
-		return syscall.ENOENT
+		return backends.ErrNoEntry
 	}
 
 	// Remove it from memory
 	delete(dir.files, name)
 
-	return fs.OK
+	return nil
 }
 
-func (dir *directory) GetAttributes(ctx context.Context) (fuse.Attr, syscall.Errno) {
-	return dir.attr, fs.OK
+func (dir *directory) GetAttributes(ctx context.Context) (fuse.Attr, error) {
+	return dir.attr, nil
 }
 
-func (dir *directory) SetAttributes(ctx context.Context, in *fuse.SetAttrIn) syscall.Errno {
+func (dir *directory) SetAttributes(ctx context.Context, in *fuse.SetAttrIn) error {
 	// TODO
-	return fs.OK
+	return nil
 }
 
-func (dir *directory) RenameNode(ctx context.Context, name string, newParent backends.Directory, newName string) syscall.Errno {
+func (dir *directory) RenameNode(ctx context.Context, name string, newParent backends.Directory, newName string) error {
 	// Get the directory or the file
 	d, dirExist := dir.dirs[name]
 	f, fileExist := dir.files[name]
 
 	// Check if it doesn't not exist already
-	if errno := newParent.(*directory).checkIfFileOrDirectoryAlreadyExists(newName); errno != fs.OK {
-		return errno
+	if err := newParent.(*directory).checkIfFileOrDirectoryAlreadyExists(newName); err != nil {
+		return err
 	}
 
 	// Add it to new parent and remove it from current parent
@@ -169,8 +167,8 @@ func (dir *directory) RenameNode(ctx context.Context, name string, newParent bac
 		newParent.(*directory).files[newName] = f
 		delete(dir.files, name)
 	default:
-		return syscall.ENOENT
+		return backends.ErrNoEntry
 	}
 
-	return fs.OK
+	return nil
 }

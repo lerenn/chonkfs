@@ -39,9 +39,12 @@ func (fl *File) Getattr(ctx context.Context, out *fuse.AttrOut) (errno syscall.E
 	fl.logger.Printf("File[%s].Getattr(...)\n", fl.name)
 
 	// Get attributes from backend
-	attr, errno := fl.backend.GetAttributes(ctx)
-	if errno != fs.OK {
-		return errno
+	attr, err := fl.backend.GetAttributes(ctx)
+	if err != nil {
+		return backends.ToSyscallErrno(err,
+			backends.ToSyscallErrnoOptions{
+				Logger: fl.logger,
+			})
 	}
 
 	// Set attributes
@@ -51,12 +54,17 @@ func (fl *File) Getattr(ctx context.Context, out *fuse.AttrOut) (errno syscall.E
 }
 
 func (fl *File) Read(ctx context.Context, dest []byte, off int64) (fuse.ReadResult, syscall.Errno) {
-	fl.logger.Printf("File[%s].Read(off=%d)\n", fl.name, off)
+	fl.logger.Printf("File[%s].Read(len=%d, off=%d)\n", fl.name, len(dest), off)
 
 	// Get content from file
-	content, errno := fl.backend.Read(ctx, off)
-	if errno != fs.OK {
-		return nil, errno
+	start := uint64(off)
+	end := uint64(off) + uint64(len(dest))
+	content, err := fl.backend.Read(ctx, start, end)
+	if err != nil {
+		return nil, backends.ToSyscallErrno(err,
+			backends.ToSyscallErrnoOptions{
+				Logger: fl.logger,
+			})
 	}
 
 	return fuse.ReadResultData(content), fs.OK
@@ -75,24 +83,43 @@ func (fl *File) Write(ctx context.Context, data []byte, off int64) (written uint
 	fl.logger.Printf("File[%s].Write(len=%d, off=%d)\n", fl.name, len(data), off)
 
 	// Write content to file
-	return fl.backend.WriteCache(ctx, data, off)
+	written, err := fl.backend.WriteCache(ctx, data, off)
+	return written, backends.ToSyscallErrno(err,
+		backends.ToSyscallErrnoOptions{
+			Logger: fl.logger,
+		})
 }
 
 func (fl *File) Fsync(ctx context.Context, flags uint32) syscall.Errno {
 	fl.logger.Printf("File[%s].Fsync(...)\n", fl.name)
 
 	// Sync cache on backend with underlying support
-	return fl.backend.Sync(ctx)
+	return backends.ToSyscallErrno(
+		fl.backend.Sync(ctx),
+		backends.ToSyscallErrnoOptions{
+			Logger: fl.logger,
+		},
+	)
 }
 
 func (fl *File) Setattr(ctx context.Context, f fs.FileHandle, in *fuse.SetAttrIn, out *fuse.AttrOut) syscall.Errno {
 	fl.logger.Printf("File[%s].Setattr(...)\n", fl.name)
-	return fl.backend.SetAttributes(ctx, in)
+	return backends.ToSyscallErrno(
+		fl.backend.SetAttributes(ctx, in),
+		backends.ToSyscallErrnoOptions{
+			Logger: fl.logger,
+		},
+	)
 }
 
 func (fl *File) Flush(ctx context.Context) syscall.Errno {
 	fl.logger.Printf("File[%s].Flush(...)\n", fl.name)
 
 	// Sync cache on backend with underlying support
-	return fl.backend.Sync(ctx)
+	return backends.ToSyscallErrno(
+		fl.backend.Sync(ctx),
+		backends.ToSyscallErrnoOptions{
+			Logger: fl.logger,
+		},
+	)
 }

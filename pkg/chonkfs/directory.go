@@ -44,9 +44,11 @@ func (d *Directory) Create(
 	d.logger.Printf("Directory.Create(name=%q, ...)\n", name)
 
 	// Create a new child file from backend
-	backendChildFile, errno := d.backend.CreateFile(ctx, name)
-	if errno != fs.OK {
-		return nil, nil, 0, errno
+	backendChildFile, err := d.backend.CreateFile(ctx, name)
+	if err != nil {
+		return nil, nil, 0, backends.ToSyscallErrno(err, backends.ToSyscallErrnoOptions{
+			Logger: d.logger,
+		})
 	}
 
 	// Create chonkfs File
@@ -64,9 +66,11 @@ func (d *Directory) Getattr(ctx context.Context, fh fs.FileHandle, out *fuse.Att
 	d.logger.Printf("Directory.Getattr(...)\n")
 
 	// Get attributes from backend
-	attr, errno := d.backend.GetAttributes(ctx)
-	if errno != fs.OK {
-		return errno
+	attr, err := d.backend.GetAttributes(ctx)
+	if err != nil {
+		return backends.ToSyscallErrno(err, backends.ToSyscallErrnoOptions{
+			Logger: d.logger,
+		})
 	}
 
 	// Set attributes
@@ -79,19 +83,21 @@ func (d *Directory) Lookup(ctx context.Context, name string, out *fuse.EntryOut)
 	d.logger.Printf("Directory.Lookup(name=%q, ...)\n", name)
 
 	// Get backend child directory
-	backendChildDir, errno := d.backend.GetDirectory(ctx, name)
+	backendChildDir, err := d.backend.GetDirectory(ctx, name)
 
-	switch errno {
-	case fs.OK:
+	switch err {
+	case nil:
 		// Create inode
 		ino := d.NewInode(ctx, &Directory{
 			backend: backendChildDir,
 		}, fs.StableAttr{Mode: syscall.S_IFDIR})
 
 		// Set mode from backend
-		attr, errnoBackend := backendChildDir.GetAttributes(ctx)
-		if errnoBackend != fs.OK {
-			return nil, errnoBackend
+		attr, err := backendChildDir.GetAttributes(ctx)
+		if err != nil {
+			return nil, backends.ToSyscallErrno(err, backends.ToSyscallErrnoOptions{
+				Logger: d.logger,
+			})
 		}
 		out.Attr = attr
 
@@ -101,11 +107,13 @@ func (d *Directory) Lookup(ctx context.Context, name string, out *fuse.EntryOut)
 
 		// Return the inode
 		return ino, fs.OK
-	case syscall.ENOTDIR:
+	case backends.ErrNotDirectory:
 		// Get backend file
-		backendChildFile, errno := d.backend.GetFile(ctx, name)
-		if errno != fs.OK {
-			return nil, errno
+		backendChildFile, err := d.backend.GetFile(ctx, name)
+		if err != nil {
+			return nil, backends.ToSyscallErrno(err, backends.ToSyscallErrnoOptions{
+				Logger: d.logger,
+			})
 		}
 
 		// Create inode
@@ -116,9 +124,11 @@ func (d *Directory) Lookup(ctx context.Context, name string, out *fuse.EntryOut)
 		}, fs.StableAttr{Mode: syscall.S_IFREG})
 
 		// Set mode from backend
-		attr, errnoBackend := backendChildFile.GetAttributes(ctx)
-		if errnoBackend != fs.OK {
-			return nil, errnoBackend
+		attr, err := backendChildFile.GetAttributes(ctx)
+		if err != nil {
+			return nil, backends.ToSyscallErrno(err, backends.ToSyscallErrnoOptions{
+				Logger: d.logger,
+			})
 		}
 		out.Attr = attr
 
@@ -129,7 +139,9 @@ func (d *Directory) Lookup(ctx context.Context, name string, out *fuse.EntryOut)
 		// Return the inode
 		return ino, fs.OK
 	default:
-		return nil, errno
+		return nil, backends.ToSyscallErrno(err, backends.ToSyscallErrnoOptions{
+			Logger: d.logger,
+		})
 	}
 }
 
@@ -137,9 +149,11 @@ func (d *Directory) Mkdir(ctx context.Context, name string, mode uint32, out *fu
 	d.logger.Printf("Directory.Mkdir(...)\n")
 
 	// Create a new child directory from backend
-	backendChildDir, errno := d.backend.CreateDirectory(ctx, name)
-	if errno != fs.OK {
-		return nil, errno
+	backendChildDir, err := d.backend.CreateDirectory(ctx, name)
+	if err != nil {
+		return nil, backends.ToSyscallErrno(err, backends.ToSyscallErrnoOptions{
+			Logger: d.logger,
+		})
 	}
 
 	// Return an inode with the chonkfs directory
@@ -152,9 +166,11 @@ func (d *Directory) Readdir(ctx context.Context) (fs.DirStream, syscall.Errno) {
 	d.logger.Printf("Directory.Readdir(...)\n")
 
 	// List entries from backend
-	l, errno := d.backend.ListEntries(ctx)
-	if errno != fs.OK {
-		return nil, errno
+	l, err := d.backend.ListEntries(ctx)
+	if err != nil {
+		return nil, backends.ToSyscallErrno(err, backends.ToSyscallErrnoOptions{
+			Logger: d.logger,
+		})
 	}
 
 	return fs.NewListDirStream(l), fs.OK
@@ -162,40 +178,58 @@ func (d *Directory) Readdir(ctx context.Context) (fs.DirStream, syscall.Errno) {
 
 func (d *Directory) Rmdir(ctx context.Context, name string) syscall.Errno {
 	d.logger.Printf("Directory.Rmdir(...)\n")
-	return d.backend.RemoveDirectory(ctx, name)
+	return backends.ToSyscallErrno(
+		d.backend.RemoveDirectory(ctx, name),
+		backends.ToSyscallErrnoOptions{
+			Logger: d.logger,
+		},
+	)
 }
 
 func (d *Directory) Unlink(ctx context.Context, name string) syscall.Errno {
 	d.logger.Printf("Directory.Unlink(name=%q, ...)\n", name)
-	return d.backend.RemoveFile(ctx, name)
+	return backends.ToSyscallErrno(
+		d.backend.RemoveFile(ctx, name),
+		backends.ToSyscallErrnoOptions{
+			Logger: d.logger,
+		},
+	)
 }
 
 func (d *Directory) Setattr(ctx context.Context, f fs.FileHandle, in *fuse.SetAttrIn, out *fuse.AttrOut) syscall.Errno {
 	d.logger.Printf("Directory.Setattr(...)\n")
-	return d.backend.SetAttributes(ctx, in)
+	return backends.ToSyscallErrno(
+		d.backend.SetAttributes(ctx, in),
+		backends.ToSyscallErrnoOptions{
+			Logger: d.logger,
+		},
+	)
 }
 
 func (d *Directory) Rename(ctx context.Context, name string, newParent fs.InodeEmbedder, newName string, flags uint32) syscall.Errno {
 	d.logger.Printf("Directory.Rename(...)\n")
 
 	// Get the new parent directory
-	newParentDir, errno := getDirectoryFromInodeEmbedder(newParent)
+	newParentDir, errno := d.getDirectoryFromInodeEmbedder(newParent)
 	if errno != fs.OK {
 		return errno
 	}
 
 	// Rename node on backend
-	if errno := d.backend.RenameNode(ctx, name, newParentDir.backend, newName); errno != fs.OK {
-		return errno
+	if err := d.backend.RenameNode(ctx, name, newParentDir.backend, newName); err != nil {
+		return backends.ToSyscallErrno(err, backends.ToSyscallErrnoOptions{
+			Logger: d.logger,
+		})
 	}
 
 	return fs.OK
 }
 
-func getDirectoryFromInodeEmbedder(inode fs.InodeEmbedder) (*Directory, syscall.Errno) {
+func (d *Directory) getDirectoryFromInodeEmbedder(inode fs.InodeEmbedder) (*Directory, syscall.Errno) {
 	// Cast/Assert new parent to directory structure
 	dir, ok := inode.(*Directory)
 	if !ok {
+		log.Printf("ERROR: new parent is not a ChonkFS directory\n")
 		return nil, syscall.EINVAL
 	}
 

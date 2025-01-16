@@ -12,166 +12,10 @@ package backends
 import (
 	context "context"
 	reflect "reflect"
-	syscall "syscall"
 
 	fuse "github.com/hanwen/go-fuse/v2/fuse"
 	gomock "go.uber.org/mock/gomock"
 )
-
-// MockRoot is a mock of Root interface.
-type MockRoot struct {
-	ctrl     *gomock.Controller
-	recorder *MockRootMockRecorder
-	isgomock struct{}
-}
-
-// MockRootMockRecorder is the mock recorder for MockRoot.
-type MockRootMockRecorder struct {
-	mock *MockRoot
-}
-
-// NewMockRoot creates a new mock instance.
-func NewMockRoot(ctrl *gomock.Controller) *MockRoot {
-	mock := &MockRoot{ctrl: ctrl}
-	mock.recorder = &MockRootMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockRoot) EXPECT() *MockRootMockRecorder {
-	return m.recorder
-}
-
-// CreateDirectory mocks base method.
-func (m *MockRoot) CreateDirectory(ctx context.Context, name string) (Directory, syscall.Errno) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateDirectory", ctx, name)
-	ret0, _ := ret[0].(Directory)
-	ret1, _ := ret[1].(syscall.Errno)
-	return ret0, ret1
-}
-
-// CreateDirectory indicates an expected call of CreateDirectory.
-func (mr *MockRootMockRecorder) CreateDirectory(ctx, name any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateDirectory", reflect.TypeOf((*MockRoot)(nil).CreateDirectory), ctx, name)
-}
-
-// CreateFile mocks base method.
-func (m *MockRoot) CreateFile(ctx context.Context, name string) (File, syscall.Errno) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateFile", ctx, name)
-	ret0, _ := ret[0].(File)
-	ret1, _ := ret[1].(syscall.Errno)
-	return ret0, ret1
-}
-
-// CreateFile indicates an expected call of CreateFile.
-func (mr *MockRootMockRecorder) CreateFile(ctx, name any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateFile", reflect.TypeOf((*MockRoot)(nil).CreateFile), ctx, name)
-}
-
-// GetAttributes mocks base method.
-func (m *MockRoot) GetAttributes(ctx context.Context, attr *fuse.Attr) syscall.Errno {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAttributes", ctx, attr)
-	ret0, _ := ret[0].(syscall.Errno)
-	return ret0
-}
-
-// GetAttributes indicates an expected call of GetAttributes.
-func (mr *MockRootMockRecorder) GetAttributes(ctx, attr any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAttributes", reflect.TypeOf((*MockRoot)(nil).GetAttributes), ctx, attr)
-}
-
-// GetDirectory mocks base method.
-func (m *MockRoot) GetDirectory(ctx context.Context, name string) (Directory, syscall.Errno) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetDirectory", ctx, name)
-	ret0, _ := ret[0].(Directory)
-	ret1, _ := ret[1].(syscall.Errno)
-	return ret0, ret1
-}
-
-// GetDirectory indicates an expected call of GetDirectory.
-func (mr *MockRootMockRecorder) GetDirectory(ctx, name any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDirectory", reflect.TypeOf((*MockRoot)(nil).GetDirectory), ctx, name)
-}
-
-// GetFile mocks base method.
-func (m *MockRoot) GetFile(ctx context.Context, name string) (File, syscall.Errno) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetFile", ctx, name)
-	ret0, _ := ret[0].(File)
-	ret1, _ := ret[1].(syscall.Errno)
-	return ret0, ret1
-}
-
-// GetFile indicates an expected call of GetFile.
-func (mr *MockRootMockRecorder) GetFile(ctx, name any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFile", reflect.TypeOf((*MockRoot)(nil).GetFile), ctx, name)
-}
-
-// ListEntries mocks base method.
-func (m *MockRoot) ListEntries(ctx context.Context) ([]fuse.DirEntry, syscall.Errno) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListEntries", ctx)
-	ret0, _ := ret[0].([]fuse.DirEntry)
-	ret1, _ := ret[1].(syscall.Errno)
-	return ret0, ret1
-}
-
-// ListEntries indicates an expected call of ListEntries.
-func (mr *MockRootMockRecorder) ListEntries(ctx any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEntries", reflect.TypeOf((*MockRoot)(nil).ListEntries), ctx)
-}
-
-// RemoveDirectory mocks base method.
-func (m *MockRoot) RemoveDirectory(ctx context.Context, name string) syscall.Errno {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RemoveDirectory", ctx, name)
-	ret0, _ := ret[0].(syscall.Errno)
-	return ret0
-}
-
-// RemoveDirectory indicates an expected call of RemoveDirectory.
-func (mr *MockRootMockRecorder) RemoveDirectory(ctx, name any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveDirectory", reflect.TypeOf((*MockRoot)(nil).RemoveDirectory), ctx, name)
-}
-
-// RemoveFile mocks base method.
-func (m *MockRoot) RemoveFile(ctx context.Context, name string) syscall.Errno {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RemoveFile", ctx, name)
-	ret0, _ := ret[0].(syscall.Errno)
-	return ret0
-}
-
-// RemoveFile indicates an expected call of RemoveFile.
-func (mr *MockRootMockRecorder) RemoveFile(ctx, name any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveFile", reflect.TypeOf((*MockRoot)(nil).RemoveFile), ctx, name)
-}
-
-// SetAttributes mocks base method.
-func (m *MockRoot) SetAttributes(ctx context.Context, in *fuse.SetAttrIn) syscall.Errno {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetAttributes", ctx, in)
-	ret0, _ := ret[0].(syscall.Errno)
-	return ret0
-}
-
-// SetAttributes indicates an expected call of SetAttributes.
-func (mr *MockRootMockRecorder) SetAttributes(ctx, in any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetAttributes", reflect.TypeOf((*MockRoot)(nil).SetAttributes), ctx, in)
-}
 
 // MockDirectory is a mock of Directory interface.
 type MockDirectory struct {
@@ -198,11 +42,11 @@ func (m *MockDirectory) EXPECT() *MockDirectoryMockRecorder {
 }
 
 // CreateDirectory mocks base method.
-func (m *MockDirectory) CreateDirectory(ctx context.Context, name string) (Directory, syscall.Errno) {
+func (m *MockDirectory) CreateDirectory(ctx context.Context, name string) (Directory, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateDirectory", ctx, name)
 	ret0, _ := ret[0].(Directory)
-	ret1, _ := ret[1].(syscall.Errno)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
@@ -213,11 +57,11 @@ func (mr *MockDirectoryMockRecorder) CreateDirectory(ctx, name any) *gomock.Call
 }
 
 // CreateFile mocks base method.
-func (m *MockDirectory) CreateFile(ctx context.Context, name string) (File, syscall.Errno) {
+func (m *MockDirectory) CreateFile(ctx context.Context, name string) (File, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateFile", ctx, name)
 	ret0, _ := ret[0].(File)
-	ret1, _ := ret[1].(syscall.Errno)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
@@ -228,25 +72,26 @@ func (mr *MockDirectoryMockRecorder) CreateFile(ctx, name any) *gomock.Call {
 }
 
 // GetAttributes mocks base method.
-func (m *MockDirectory) GetAttributes(ctx context.Context, attr *fuse.Attr) syscall.Errno {
+func (m *MockDirectory) GetAttributes(ctx context.Context) (fuse.Attr, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAttributes", ctx, attr)
-	ret0, _ := ret[0].(syscall.Errno)
-	return ret0
+	ret := m.ctrl.Call(m, "GetAttributes", ctx)
+	ret0, _ := ret[0].(fuse.Attr)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // GetAttributes indicates an expected call of GetAttributes.
-func (mr *MockDirectoryMockRecorder) GetAttributes(ctx, attr any) *gomock.Call {
+func (mr *MockDirectoryMockRecorder) GetAttributes(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAttributes", reflect.TypeOf((*MockDirectory)(nil).GetAttributes), ctx, attr)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAttributes", reflect.TypeOf((*MockDirectory)(nil).GetAttributes), ctx)
 }
 
 // GetDirectory mocks base method.
-func (m *MockDirectory) GetDirectory(ctx context.Context, name string) (Directory, syscall.Errno) {
+func (m *MockDirectory) GetDirectory(ctx context.Context, name string) (Directory, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetDirectory", ctx, name)
 	ret0, _ := ret[0].(Directory)
-	ret1, _ := ret[1].(syscall.Errno)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
@@ -257,11 +102,11 @@ func (mr *MockDirectoryMockRecorder) GetDirectory(ctx, name any) *gomock.Call {
 }
 
 // GetFile mocks base method.
-func (m *MockDirectory) GetFile(ctx context.Context, name string) (File, syscall.Errno) {
+func (m *MockDirectory) GetFile(ctx context.Context, name string) (File, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetFile", ctx, name)
 	ret0, _ := ret[0].(File)
-	ret1, _ := ret[1].(syscall.Errno)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
@@ -272,11 +117,11 @@ func (mr *MockDirectoryMockRecorder) GetFile(ctx, name any) *gomock.Call {
 }
 
 // ListEntries mocks base method.
-func (m *MockDirectory) ListEntries(ctx context.Context) ([]fuse.DirEntry, syscall.Errno) {
+func (m *MockDirectory) ListEntries(ctx context.Context) ([]fuse.DirEntry, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListEntries", ctx)
 	ret0, _ := ret[0].([]fuse.DirEntry)
-	ret1, _ := ret[1].(syscall.Errno)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
@@ -287,10 +132,10 @@ func (mr *MockDirectoryMockRecorder) ListEntries(ctx any) *gomock.Call {
 }
 
 // RemoveDirectory mocks base method.
-func (m *MockDirectory) RemoveDirectory(ctx context.Context, name string) syscall.Errno {
+func (m *MockDirectory) RemoveDirectory(ctx context.Context, name string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RemoveDirectory", ctx, name)
-	ret0, _ := ret[0].(syscall.Errno)
+	ret0, _ := ret[0].(error)
 	return ret0
 }
 
@@ -301,10 +146,10 @@ func (mr *MockDirectoryMockRecorder) RemoveDirectory(ctx, name any) *gomock.Call
 }
 
 // RemoveFile mocks base method.
-func (m *MockDirectory) RemoveFile(ctx context.Context, name string) syscall.Errno {
+func (m *MockDirectory) RemoveFile(ctx context.Context, name string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RemoveFile", ctx, name)
-	ret0, _ := ret[0].(syscall.Errno)
+	ret0, _ := ret[0].(error)
 	return ret0
 }
 
@@ -314,11 +159,25 @@ func (mr *MockDirectoryMockRecorder) RemoveFile(ctx, name any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveFile", reflect.TypeOf((*MockDirectory)(nil).RemoveFile), ctx, name)
 }
 
+// RenameNode mocks base method.
+func (m *MockDirectory) RenameNode(ctx context.Context, name string, newParent Directory, newName string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RenameNode", ctx, name, newParent, newName)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RenameNode indicates an expected call of RenameNode.
+func (mr *MockDirectoryMockRecorder) RenameNode(ctx, name, newParent, newName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RenameNode", reflect.TypeOf((*MockDirectory)(nil).RenameNode), ctx, name, newParent, newName)
+}
+
 // SetAttributes mocks base method.
-func (m *MockDirectory) SetAttributes(ctx context.Context, in *fuse.SetAttrIn) syscall.Errno {
+func (m *MockDirectory) SetAttributes(ctx context.Context, in *fuse.SetAttrIn) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SetAttributes", ctx, in)
-	ret0, _ := ret[0].(syscall.Errno)
+	ret0, _ := ret[0].(error)
 	return ret0
 }
 
@@ -353,39 +212,40 @@ func (m *MockFile) EXPECT() *MockFileMockRecorder {
 }
 
 // GetAttributes mocks base method.
-func (m *MockFile) GetAttributes(ctx context.Context, attr *fuse.Attr) syscall.Errno {
+func (m *MockFile) GetAttributes(ctx context.Context) (fuse.Attr, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAttributes", ctx, attr)
-	ret0, _ := ret[0].(syscall.Errno)
-	return ret0
+	ret := m.ctrl.Call(m, "GetAttributes", ctx)
+	ret0, _ := ret[0].(fuse.Attr)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // GetAttributes indicates an expected call of GetAttributes.
-func (mr *MockFileMockRecorder) GetAttributes(ctx, attr any) *gomock.Call {
+func (mr *MockFileMockRecorder) GetAttributes(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAttributes", reflect.TypeOf((*MockFile)(nil).GetAttributes), ctx, attr)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAttributes", reflect.TypeOf((*MockFile)(nil).GetAttributes), ctx)
 }
 
 // Read mocks base method.
-func (m *MockFile) Read(ctx context.Context, off int64) ([]byte, syscall.Errno) {
+func (m *MockFile) Read(ctx context.Context, start, end uint64) ([]byte, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Read", ctx, off)
+	ret := m.ctrl.Call(m, "Read", ctx, start, end)
 	ret0, _ := ret[0].([]byte)
-	ret1, _ := ret[1].(syscall.Errno)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Read indicates an expected call of Read.
-func (mr *MockFileMockRecorder) Read(ctx, off any) *gomock.Call {
+func (mr *MockFileMockRecorder) Read(ctx, start, end any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Read", reflect.TypeOf((*MockFile)(nil).Read), ctx, off)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Read", reflect.TypeOf((*MockFile)(nil).Read), ctx, start, end)
 }
 
 // SetAttributes mocks base method.
-func (m *MockFile) SetAttributes(ctx context.Context, in *fuse.SetAttrIn) syscall.Errno {
+func (m *MockFile) SetAttributes(ctx context.Context, in *fuse.SetAttrIn) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SetAttributes", ctx, in)
-	ret0, _ := ret[0].(syscall.Errno)
+	ret0, _ := ret[0].(error)
 	return ret0
 }
 
@@ -396,10 +256,10 @@ func (mr *MockFileMockRecorder) SetAttributes(ctx, in any) *gomock.Call {
 }
 
 // Sync mocks base method.
-func (m *MockFile) Sync(ctx context.Context) syscall.Errno {
+func (m *MockFile) Sync(ctx context.Context) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Sync", ctx)
-	ret0, _ := ret[0].(syscall.Errno)
+	ret0, _ := ret[0].(error)
 	return ret0
 }
 
@@ -410,11 +270,11 @@ func (mr *MockFileMockRecorder) Sync(ctx any) *gomock.Call {
 }
 
 // WriteCache mocks base method.
-func (m *MockFile) WriteCache(ctx context.Context, data []byte, off int64) (uint32, syscall.Errno) {
+func (m *MockFile) WriteCache(ctx context.Context, data []byte, off int64) (uint32, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "WriteCache", ctx, data, off)
 	ret0, _ := ret[0].(uint32)
-	ret1, _ := ret[1].(syscall.Errno)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
