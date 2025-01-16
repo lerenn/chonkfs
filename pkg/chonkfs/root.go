@@ -1,6 +1,7 @@
 package chonkfs
 
 import (
+	"io"
 	"log"
 
 	"github.com/lerenn/chonkfs/pkg/backends"
@@ -15,11 +16,13 @@ func WithLogger(logger *log.Logger) DirectoryOption {
 }
 
 func New(backend backends.Directory, options ...DirectoryOption) *Directory {
+	// Create a new directory
 	dir := &Directory{
 		backend: backend,
-		logger:  log.Default(),
+		logger:  log.New(io.Discard, "", 0),
 	}
 
+	// Apply options
 	for _, o := range options {
 		o(dir)
 	}

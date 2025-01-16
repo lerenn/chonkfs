@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/hanwen/go-fuse/v2/fs"
@@ -11,7 +12,8 @@ import (
 )
 
 var (
-	path string
+	path  string
+	debug bool
 )
 
 var rootCmd = &cobra.Command{
@@ -20,17 +22,27 @@ var rootCmd = &cobra.Command{
 	Short:   "chonkfs - a CLI to manage ChonkFS",
 	Args:    cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, _ []string) error {
+		var options []chonkfs.DirectoryOption
+		var fsOptions fs.Options
+
 		// Check if path is set
 		if path == "" {
 			return fmt.Errorf("path is required")
 		}
 
+		// Create a default logger if logging is activated
+		if debug {
+			logger := log.Default()
+			options = append(options, chonkfs.WithLogger(logger))
+			fsOptions.Logger = logger
+		}
+
+		// Add UID/GID to server
+		fsOptions.UID = uint32(os.Getuid())
+		fsOptions.GID = uint32(os.Getgid())
+
 		// Create server
-		// TODO: make backend configurable
-		server, err := fs.Mount(path, chonkfs.New(mem.New()), &fs.Options{
-			UID: uint32(os.Getuid()),
-			GID: uint32(os.Getgid()),
-		})
+		server, err := fs.Mount(path, chonkfs.New(mem.New(), options...), &fsOptions)
 		if err != nil {
 			return err
 		}
@@ -46,6 +58,7 @@ func main() {
 
 	// Set flags
 	rootCmd.PersistentFlags().StringVarP(&path, "path", "p", "", "Set mount path")
+	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "Enable debug mode")
 
 	// Execute command
 	if err := rootCmd.Execute(); err != nil {
