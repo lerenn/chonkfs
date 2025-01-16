@@ -51,7 +51,7 @@ func (fl *File) Getattr(ctx context.Context, out *fuse.AttrOut) (errno syscall.E
 }
 
 func (fl *File) Read(ctx context.Context, dest []byte, off int64) (fuse.ReadResult, syscall.Errno) {
-	fl.logger.Printf("File[%s].Read(...)\n", fl.name)
+	fl.logger.Printf("File[%s].Read(off=%d)\n", fl.name, off)
 
 	// Get content from file
 	content, errno := fl.backend.Read(ctx, off)
@@ -72,7 +72,7 @@ func (fl *File) Open(ctx context.Context, flags uint32) (fh fs.FileHandle, fuseF
 }
 
 func (fl *File) Write(ctx context.Context, data []byte, off int64) (written uint32, errno syscall.Errno) {
-	fl.logger.Printf("File[%s].Write(...)\n", fl.name)
+	fl.logger.Printf("File[%s].Write(len=%d, off=%d)\n", fl.name, len(data), off)
 
 	// Write content to file
 	return fl.backend.WriteCache(ctx, data, off)

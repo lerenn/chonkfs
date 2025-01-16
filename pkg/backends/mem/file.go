@@ -34,14 +34,25 @@ func (f *file) SetAttributes(ctx context.Context, in *fuse.SetAttrIn) syscall.Er
 }
 
 func (f *file) Read(ctx context.Context, off int64) ([]byte, syscall.Errno) {
+	// If there is no cache, populate it with the content
 	if len(f.cache) == 0 {
 		f.cache = slices.Clone(f.content)
 	}
 
-	return f.content[off:len(f.content)], fs.OK
+	// Check that the offset is within the cache
+	if off > int64(len(f.cache)) {
+		return nil, syscall.EINVAL
+	}
+
+	return f.cache[off:len(f.cache)], fs.OK
 }
 
 func (f *file) WriteCache(ctx context.Context, data []byte, off int64) (written uint32, errno syscall.Errno) {
+	// Check if there is enough space, and allocate what's missing
+	if int(off) > len(f.cache) {
+		f.cache = append(f.cache, make([]byte, int(off)-len(f.cache))...)
+	}
+
 	// Get everything before off
 	cache := f.cache[:off]
 
