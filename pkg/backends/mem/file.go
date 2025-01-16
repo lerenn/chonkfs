@@ -19,6 +19,7 @@ type file struct {
 func newEmptyFile() *file {
 	return &file{
 		content: make([]byte, 0),
+		cache:   make([]byte, 0),
 	}
 }
 
@@ -31,7 +32,7 @@ func (f *file) SetAttributes(ctx context.Context, in *fuse.SetAttrIn) error {
 	return nil
 }
 
-func (f *file) Read(ctx context.Context, start, end uint64) ([]byte, error) {
+func (f *file) Read(ctx context.Context, start, end int) ([]byte, error) {
 	// Check that the end is after the start
 	if end < start {
 		return nil, backends.ErrReadEndBeforeReadStart
@@ -43,29 +44,30 @@ func (f *file) Read(ctx context.Context, start, end uint64) ([]byte, error) {
 	}
 
 	// Check that the offset is within the cache
-	if end > uint64(len(f.cache)) {
-		return nil, backends.ErrReadAfterEndOfFile
+	if end >= len(f.cache) {
+		end = len(f.cache) - 1
 	}
 
 	return f.cache[start:end], nil
 }
 
-func (f *file) WriteCache(ctx context.Context, data []byte, off int64) (written uint32, err error) {
+func (f *file) WriteCache(ctx context.Context, data []byte, off int) (written int, err error) {
 	// Check if there is enough space, and allocate what's missing
 	if int(off) > len(f.cache) {
-		f.cache = append(f.cache, make([]byte, int(off)-len(f.cache))...)
+		f.cache = append(f.cache, make([]byte, int(off)-(len(f.cache)-1))...)
 	}
 
-	// Get everything before off
-	cache := f.cache[:off]
+	// Get everything before off and after the data's end
+	before, after := f.cache[:off], f.cache[off+len(data):]
 
-	// Add the data
-	cache = append(cache, data...)
+	// Concatenate everything
+	cache := append(before, data...)
+	cache = append(cache, after...)
 
 	// Save the data
 	f.cache = cache
 
-	return uint32(len(data)), nil
+	return len(data), nil
 }
 
 func (f *file) Sync(ctx context.Context) error {

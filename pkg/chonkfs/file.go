@@ -59,7 +59,7 @@ func (fl *File) Read(ctx context.Context, dest []byte, off int64) (fuse.ReadResu
 	// Get content from file
 	start := uint64(off)
 	end := uint64(off) + uint64(len(dest))
-	content, err := fl.backend.Read(ctx, start, end)
+	content, err := fl.backend.Read(ctx, int(start), int(end))
 	if err != nil {
 		return nil, backends.ToSyscallErrno(err,
 			backends.ToSyscallErrnoOptions{
@@ -83,8 +83,8 @@ func (fl *File) Write(ctx context.Context, data []byte, off int64) (written uint
 	fl.logger.Printf("File[%s].Write(len=%d, off=%d)\n", fl.name, len(data), off)
 
 	// Write content to file
-	written, err := fl.backend.WriteCache(ctx, data, off)
-	return written, backends.ToSyscallErrno(err,
+	w, err := fl.backend.WriteCache(ctx, data, int(off))
+	return uint32(w), backends.ToSyscallErrno(err,
 		backends.ToSyscallErrnoOptions{
 			Logger: fl.logger,
 		})

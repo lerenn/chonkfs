@@ -227,7 +227,7 @@ func (mr *MockFileMockRecorder) GetAttributes(ctx any) *gomock.Call {
 }
 
 // Read mocks base method.
-func (m *MockFile) Read(ctx context.Context, start, end uint64) ([]byte, error) {
+func (m *MockFile) Read(ctx context.Context, start, end int) ([]byte, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Read", ctx, start, end)
 	ret0, _ := ret[0].([]byte)
@@ -270,10 +270,10 @@ func (mr *MockFileMockRecorder) Sync(ctx any) *gomock.Call {
 }
 
 // WriteCache mocks base method.
-func (m *MockFile) WriteCache(ctx context.Context, data []byte, off int64) (uint32, error) {
+func (m *MockFile) WriteCache(ctx context.Context, data []byte, off int) (int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "WriteCache", ctx, data, off)
-	ret0, _ := ret[0].(uint32)
+	ret0, _ := ret[0].(int)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

@@ -34,7 +34,7 @@ type Directory interface {
 type File interface {
 	GetAttributes(ctx context.Context) (fuse.Attr, error)
 	SetAttributes(ctx context.Context, in *fuse.SetAttrIn) error
-	Read(ctx context.Context, start, end uint64) ([]byte, error)
-	WriteCache(ctx context.Context, data []byte, off int64) (written uint32, errno error)
+	Read(ctx context.Context, start, end int) ([]byte, error)
+	WriteCache(ctx context.Context, data []byte, off int) (written int, errno error)
 	Sync(ctx context.Context) error
 }

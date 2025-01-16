@@ -8,7 +8,6 @@ import (
 
 var (
 	ErrBackend                = fmt.Errorf("backend error")
-	ErrReadAfterEndOfFile     = fmt.Errorf("%w: reading after end of file", ErrBackend)
 	ErrReadEndBeforeReadStart = fmt.Errorf("%w: end before start", ErrBackend)
 	ErrNotDirectory           = fmt.Errorf("%w: not a directory", ErrBackend)
 	ErrAlreadyExists          = fmt.Errorf("%w: already exists", ErrBackend)
@@ -32,7 +31,7 @@ func ToSyscallErrno(err error, opts ToSyscallErrnoOptions) syscall.Errno {
 
 	// Change error to errno
 	switch err {
-	case ErrReadAfterEndOfFile, ErrReadEndBeforeReadStart:
+	case ErrReadEndBeforeReadStart:
 		return syscall.EINVAL
 	case ErrNotDirectory:
 		return syscall.ENOTDIR
