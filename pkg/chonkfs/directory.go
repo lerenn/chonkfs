@@ -2,6 +2,7 @@ package chonkfs
 
 import (
 	"context"
+	"io"
 	"log"
 	"syscall"
 
@@ -10,13 +11,18 @@ import (
 	"github.com/lerenn/chonkfs/pkg/backends"
 )
 
-type Directory struct {
-	backend backends.Directory
-	logger  *log.Logger
+type DirectoryOption func(dir *Directory)
 
-	fs.Inode
+func WithDirectoryLogger(logger *log.Logger) DirectoryOption {
+	return func(dir *Directory) {
+		dir.logger = logger
+	}
+}
 
-	// implementers.NodeImplementer
+func WithDirectoryChunkSize(chunkSize int) DirectoryOption {
+	return func(dir *Directory) {
+		dir.chunkSize = chunkSize
+	}
 }
 
 // Capabilities that the dir struct should implements
@@ -34,6 +40,35 @@ var (
 	_ fs.NodeUnlinker  = (*Directory)(nil)
 )
 
+type Directory struct {
+	fs.Inode
+
+	backend backends.Directory
+
+	// Optional
+
+	options   []DirectoryOption
+	logger    *log.Logger
+	chunkSize int
+}
+
+func NewDirectory(backend backends.Directory, options ...DirectoryOption) *Directory {
+	// Create a default directory
+	dir := &Directory{
+		backend:   backend,
+		options:   options,
+		chunkSize: DefaultChunkSize,
+		logger:    log.New(io.Discard, "", 0),
+	}
+
+	// Apply options
+	for _, o := range options {
+		o(dir)
+	}
+
+	return dir
+}
+
 func (d *Directory) Create(
 	ctx context.Context,
 	name string,
@@ -44,7 +79,7 @@ func (d *Directory) Create(
 	d.logger.Printf("Directory.Create(name=%q, ...)\n", name)
 
 	// Create a new child file from backend
-	backendChildFile, err := d.backend.CreateFile(ctx, name)
+	backendChildFile, err := d.backend.CreateFile(ctx, name, d.chunkSize)
 	if err != nil {
 		return nil, nil, 0, backends.ToSyscallErrno(err, backends.ToSyscallErrnoOptions{
 			Logger: d.logger,
@@ -52,11 +87,10 @@ func (d *Directory) Create(
 	}
 
 	// Create chonkfs File
-	f := &File{
-		backend: backendChildFile,
-		logger:  d.logger,
-		name:    name,
-	}
+	f := NewFile(backendChildFile,
+		WithFileLogger(d.logger),
+		WithFileChunkSize(d.chunkSize),
+		WithFileName(name))
 
 	// Return an inode with the chonkfs directory
 	return d.NewInode(ctx, f, fs.StableAttr{Mode: syscall.S_IFREG}), f, fuse.FOPEN_DIRECT_IO, fs.OK
@@ -88,9 +122,7 @@ func (d *Directory) Lookup(ctx context.Context, name string, out *fuse.EntryOut)
 	switch err {
 	case nil:
 		// Create inode
-		ino := d.NewInode(ctx, &Directory{
-			backend: backendChildDir,
-		}, fs.StableAttr{Mode: syscall.S_IFDIR})
+		ino := d.NewInode(ctx, NewDirectory(backendChildDir, d.options...), fs.StableAttr{Mode: syscall.S_IFDIR})
 
 		// Set mode from backend
 		attr, err := backendChildDir.GetAttributes(ctx)
@@ -117,11 +149,13 @@ func (d *Directory) Lookup(ctx context.Context, name string, out *fuse.EntryOut)
 		}
 
 		// Create inode
-		ino := d.NewInode(ctx, &File{
-			backend: backendChildFile,
-			logger:  d.logger,
-			name:    name,
-		}, fs.StableAttr{Mode: syscall.S_IFREG})
+		ino := d.NewInode(
+			ctx,
+			NewFile(backendChildFile,
+				WithFileLogger(d.logger),
+				WithFileChunkSize(d.chunkSize),
+				WithFileName(name)),
+			fs.StableAttr{Mode: syscall.S_IFREG})
 
 		// Set mode from backend
 		attr, err := backendChildFile.GetAttributes(ctx)
@@ -157,9 +191,7 @@ func (d *Directory) Mkdir(ctx context.Context, name string, mode uint32, out *fu
 	}
 
 	// Return an inode with the chonkfs directory
-	return d.NewInode(ctx, &Directory{
-		backend: backendChildDir,
-	}, fs.StableAttr{Mode: syscall.S_IFDIR}), fs.OK
+	return d.NewInode(ctx, NewDirectory(backendChildDir, d.options...), fs.StableAttr{Mode: syscall.S_IFDIR}), fs.OK
 }
 
 func (d *Directory) Readdir(ctx context.Context) (fs.DirStream, syscall.Errno) {
@@ -216,7 +248,7 @@ func (d *Directory) Rename(ctx context.Context, name string, newParent fs.InodeE
 	}
 
 	// Rename node on backend
-	if err := d.backend.RenameNode(ctx, name, newParentDir.backend, newName); err != nil {
+	if err := d.backend.RenameEntry(ctx, name, newParentDir.backend, newName); err != nil {
 		return backends.ToSyscallErrno(err, backends.ToSyscallErrnoOptions{
 			Logger: d.logger,
 		})

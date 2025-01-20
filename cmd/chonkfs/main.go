@@ -12,8 +12,9 @@ import (
 )
 
 var (
-	path  string
-	debug bool
+	path      string
+	debug     bool
+	chunkSize int
 )
 
 var rootCmd = &cobra.Command{
@@ -22,27 +23,34 @@ var rootCmd = &cobra.Command{
 	Short:   "chonkfs - a CLI to manage ChonkFS",
 	Args:    cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		var options []chonkfs.DirectoryOption
-		var fsOptions fs.Options
-
 		// Check if path is set
 		if path == "" {
 			return fmt.Errorf("path is required")
 		}
 
 		// Create a default logger if logging is activated
+		var logger *log.Logger
 		if debug {
-			logger := log.Default()
-			options = append(options, chonkfs.WithLogger(logger))
-			fsOptions.Logger = logger
+			logger = log.Default()
+		} else {
+			logger = log.New(os.Stdout, "", 0)
 		}
 
-		// Add UID/GID to server
-		fsOptions.UID = uint32(os.Getuid())
-		fsOptions.GID = uint32(os.Getgid())
+		// Create backend
+		backend := mem.NewDirectory(
+			mem.WithDirectoryLogger(logger))
+
+		// Create chonkfs
+		chFS := chonkfs.NewDirectory(backend,
+			chonkfs.WithDirectoryLogger(logger),
+			chonkfs.WithDirectoryChunkSize(chunkSize))
 
 		// Create server
-		server, err := fs.Mount(path, chonkfs.New(mem.New(), options...), &fsOptions)
+		server, err := fs.Mount(path, chFS, &fs.Options{
+			Logger: logger,
+			UID:    uint32(os.Getuid()),
+			GID:    uint32(os.Getgid()),
+		})
 		if err != nil {
 			return err
 		}
@@ -59,6 +67,7 @@ func main() {
 	// Set flags
 	rootCmd.PersistentFlags().StringVarP(&path, "path", "p", "", "Set mount path")
 	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "Enable debug mode")
+	rootCmd.PersistentFlags().IntVarP(&chunkSize, "chunk-size", "s", chonkfs.DefaultChunkSize, "Set chunk size")
 
 	// Execute command
 	if err := rootCmd.Execute(); err != nil {

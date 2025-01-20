@@ -2,24 +2,45 @@ package mem
 
 import (
 	"context"
+	"io"
+	"log"
 
 	"github.com/hanwen/go-fuse/v2/fuse"
 	"github.com/lerenn/chonkfs/pkg/backends"
 )
 
+type DirectoryOption func(dir *directory)
+
+func WithDirectoryLogger(logger *log.Logger) DirectoryOption {
+	return func(dir *directory) {
+		dir.logger = logger
+	}
+}
+
 var _ backends.Directory = (*directory)(nil)
 
 type directory struct {
-	attr  fuse.Attr
-	dirs  map[string]*directory
-	files map[string]*file
+	dirs   map[string]*directory
+	files  map[string]*file
+	logger *log.Logger
+	opts   []DirectoryOption
 }
 
-func newEmptyDirectory() *directory {
-	return &directory{
-		dirs:  make(map[string]*directory),
-		files: make(map[string]*file),
+func NewDirectory(opts ...DirectoryOption) *directory {
+	// Create a default directory
+	d := &directory{
+		dirs:   make(map[string]*directory),
+		files:  make(map[string]*file),
+		logger: log.New(io.Discard, "", 0),
+		opts:   opts,
 	}
+
+	// Apply options
+	for _, opt := range opts {
+		opt(d)
+	}
+
+	return d
 }
 
 func (dir *directory) checkIfFileOrDirectoryAlreadyExists(name string) error {
@@ -43,7 +64,7 @@ func (dir *directory) CreateDirectory(ctx context.Context, name string) (backend
 	}
 
 	// Create a new directory
-	c := newEmptyDirectory()
+	c := NewDirectory(dir.opts...)
 
 	// Add it to childs
 	dir.dirs[name] = c
@@ -100,14 +121,15 @@ func (dir *directory) ListEntries(ctx context.Context) ([]fuse.DirEntry, error) 
 	return list, nil
 }
 
-func (dir *directory) CreateFile(ctx context.Context, name string) (backends.File, error) {
+func (dir *directory) CreateFile(ctx context.Context, name string, chunkSize int) (backends.File, error) {
 	// Check if it doesn't not exist already
 	if err := dir.checkIfFileOrDirectoryAlreadyExists(name); err != nil {
 		return nil, err
 	}
 
 	// Create file
-	f := newEmptyFile()
+	f := newFile(chunkSize,
+		WithFileLogger(dir.logger))
 
 	// Add it to children
 	dir.files[name] = f
@@ -140,7 +162,8 @@ func (dir *directory) RemoveFile(ctx context.Context, name string) error {
 }
 
 func (dir *directory) GetAttributes(ctx context.Context) (fuse.Attr, error) {
-	return dir.attr, nil
+	// TODO
+	return fuse.Attr{}, nil
 }
 
 func (dir *directory) SetAttributes(ctx context.Context, in *fuse.SetAttrIn) error {
@@ -148,7 +171,7 @@ func (dir *directory) SetAttributes(ctx context.Context, in *fuse.SetAttrIn) err
 	return nil
 }
 
-func (dir *directory) RenameNode(ctx context.Context, name string, newParent backends.Directory, newName string) error {
+func (dir *directory) RenameEntry(ctx context.Context, name string, newParent backends.Directory, newName string) error {
 	// Get the directory or the file
 	d, dirExist := dir.dirs[name]
 	f, fileExist := dir.files[name]
