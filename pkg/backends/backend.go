@@ -40,7 +40,7 @@ type File interface {
 
 	// Data
 
-	Read(ctx context.Context, start, end int) ([]byte, error)
+	Read(ctx context.Context, data []byte, off int) error
 	Size(ctx context.Context) (int, error)
 	Sync(ctx context.Context) error
 	Truncate(ctx context.Context, size int) error

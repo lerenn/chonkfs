@@ -99,9 +99,7 @@ func (fl *File) Read(ctx context.Context, dest []byte, off int64) (fuse.ReadResu
 	fl.logger.Printf("File[%s].Read(len=%d, off=%d)\n", fl.name, len(dest), off)
 
 	// Get content from file
-	start := uint64(off)
-	end := uint64(off) + uint64(len(dest))
-	content, err := fl.backend.Read(ctx, int(start), int(end))
+	err := fl.backend.Read(ctx, dest, int(off))
 	if err != nil {
 		return nil, backends.ToSyscallErrno(err,
 			backends.ToSyscallErrnoOptions{
@@ -109,7 +107,7 @@ func (fl *File) Read(ctx context.Context, dest []byte, off int64) (fuse.ReadResu
 			})
 	}
 
-	return fuse.ReadResultData(content), fs.OK
+	return fuse.ReadResultData(dest), fs.OK
 }
 
 func (fl *File) Open(ctx context.Context, flags uint32) (fh fs.FileHandle, fuseFlags uint32, errno syscall.Errno) {

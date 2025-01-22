@@ -54,34 +54,19 @@ func (f *file) SetAttributes(ctx context.Context, in *fuse.SetAttrIn) error {
 	return nil
 }
 
-func (f *file) Read(ctx context.Context, start, end int) ([]byte, error) {
-	// Check that the end is after the start
-	if end <= start {
-		return nil, backends.ErrReadEndBeforeReadStart
-	}
-
-	return f.readAccrossChunks(start, end), nil
+func (f *file) Read(ctx context.Context, data []byte, off int) error {
+	f.readAccrossChunks(data, off)
+	return nil
 }
 
-func (f *file) readAccrossChunks(start, end int) []byte {
-	content := make([]byte, 0, end-start)
-	for i, chunkNb := 0, 0; i <= end && chunkNb < len(f.data); chunkNb++ {
-		switch {
-		case i+len(f.data[chunkNb]) < start: // If not in the chunk
-			continue
-		case i >= start && i+len(f.data[chunkNb]) <= end: // If the chunk is entirely in the read range
-			content = append(content, f.data[chunkNb]...)
-		case i < start && i+len(f.data[chunkNb]) > start: // If the chunk is partially in the start of the read range
-			content = append(content, f.data[chunkNb][start-i:]...)
-		case i < end && i+len(f.data[chunkNb]) > end: // If the chunk is partially in the end of the read range
-			content = append(content, f.data[chunkNb][:end-i]...)
+func (f *file) readAccrossChunks(data []byte, off int) {
+	for chunkNb, read := off/f.chunkSize, 0; read < len(data) && chunkNb < len(f.data); chunkNb++ {
+		if read == 0 {
+			read += copy(data, f.data[chunkNb][off%f.chunkSize:])
+		} else {
+			read += copy(data[read:], f.data[chunkNb])
 		}
-
-		// Add the chunk
-		i += len(f.data[chunkNb])
 	}
-
-	return content
 }
 
 func (f *file) Write(ctx context.Context, data []byte, off int, opts backends.WriteOptions) (written int, errno error) {
@@ -205,20 +190,12 @@ func (f *file) addMissingChunks(ctx context.Context, total int) {
 }
 
 func (f *file) writeAccrossChunks(data []byte, off int) {
-	for i, chunkNb := 0, 0; i < len(data) && chunkNb < len(f.data); chunkNb++ {
-		switch {
-		case i+len(f.data[chunkNb]) < off: // If not in the chunk
-			continue
-		case i >= off && i+len(f.data[chunkNb]) <= off+len(data): // If the chunk is entirely in the write range
-			copy(f.data[chunkNb], data[i:])
-		case i < off && i+len(f.data[chunkNb]) > off: // If the chunk is partially in the start of the write range
-			copy(f.data[chunkNb][off-i:], data)
-		case i < off+len(data) && i+len(f.data[chunkNb]) > off+len(data): // If the chunk is partially in the end of the write range
-			copy(f.data[chunkNb][:off+len(data)-i], data[i:])
+	for chunkNb, written := off/f.chunkSize, 0; written < len(data) && chunkNb < len(f.data); chunkNb++ {
+		if written == 0 {
+			written += copy(f.data[chunkNb][off%f.chunkSize:], data[written:])
+		} else {
+			written += copy(f.data[chunkNb], data[written:])
 		}
-
-		// Add the chunk
-		i += len(f.data[chunkNb])
 	}
 }
 
