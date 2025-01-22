@@ -36,17 +36,17 @@ var rootCmd = &cobra.Command{
 			logger = log.New(os.Stdout, "", 0)
 		}
 
-		// Create backend
-		b := chonker.NewDirectory(
+		// Create chonker
+		c := chonker.NewDirectory(
 			chonker.WithDirectoryLogger(logger))
 
-		// Create chonkfs
-		chFS := wrapper.NewDirectory(b,
+		// Create wrapper for FUSE
+		w := wrapper.NewDirectory(c,
 			wrapper.WithDirectoryLogger(logger),
 			wrapper.WithDirectoryChunkSize(chunkSize))
 
 		// Create server
-		server, err := fs.Mount(path, chFS, &fs.Options{
+		server, err := fs.Mount(path, w, &fs.Options{
 			Logger: logger,
 			UID:    uint32(os.Getuid()),
 			GID:    uint32(os.Getgid()),
