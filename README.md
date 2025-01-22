@@ -4,11 +4,11 @@ FUSE file-system that split files in chunks and save them remotely.
 Made for protocols such as torrent based systems. 
 
 <p align="center">
-    <img src="./assets/chonker.png" alt="avatar" width="200"/>
+<img src="./assets/chonker.png" alt="avatar" width="200"/>
 
-    Chonkers are cats, and all cats are liquids that fit anywhere, disregard of their chonkiness. 
+*Chonkers are cats, and all cats are liquids that fit anywhere, disregard of their chonkiness.*
 
-    Just like this file-system.
+*Just like this file-system.*
 </p>
 
 
