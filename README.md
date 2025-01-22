@@ -24,7 +24,7 @@ The file-system is divided in three main components:
 flowchart LR
     User --File Operations<br/>through FUSE--> Wrapper
     subgraph "ChonkFS"
-        Wrapper[Wrapper<br><i>Abstract FS specifics</i>] --> Chonker[Chonker<br><i>Split in chunks</i>]
+        Wrapper[Wrapper<br><i>Abstract FS specifics</i>] --> Chonker[Chonker<br><i>Split files/Join chunks</i>]
         Chonker --Read/Store--> Storage
 
         subgraph "Storage"
