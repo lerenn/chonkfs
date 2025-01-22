@@ -5,9 +5,13 @@ Made for protocols such as torrent based systems.
 
 <p align="center">
 <img src="./assets/chonker.png" alt="avatar" width="200"/>
+</p>
 
+<p align="center">
 *Chonkers are cats, and all cats are liquids that fit anywhere, disregard of their chonkiness.*
+</p>
 
+<p align="center">
 *Just like this file-system.*
 </p>
 
