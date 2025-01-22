@@ -45,7 +45,7 @@ var rootCmd = &cobra.Command{
 			wrapper.WithDirectoryLogger(logger),
 			wrapper.WithDirectoryChunkSize(chunkSize))
 
-		// Create server
+		// Create FUSE server
 		server, err := fs.Mount(path, w, &fs.Options{
 			Logger: logger,
 			UID:    uint32(os.Getuid()),
