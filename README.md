@@ -8,11 +8,11 @@ Made for protocols such as torrent based systems.
 </p>
 
 <p align="center">
-*Chonkers are cats, and all cats are liquids that fit anywhere, disregard of their chonkiness.*
+<i>Chonkers are cats, and all cats are liquids that fit anywhere, disregard of their chonkiness.</i>
 </p>
 
 <p align="center">
-*Just like this file-system.*
+<i>Just like this file-system.</i>
 </p>
 
 
