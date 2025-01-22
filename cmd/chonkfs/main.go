@@ -6,8 +6,8 @@ import (
 	"os"
 
 	"github.com/hanwen/go-fuse/v2/fs"
-	"github.com/lerenn/chonkfs/pkg/backends/mem"
-	"github.com/lerenn/chonkfs/pkg/chonkfs"
+	"github.com/lerenn/chonkfs/pkg/chonker"
+	"github.com/lerenn/chonkfs/pkg/wrapper"
 	"github.com/spf13/cobra"
 )
 
@@ -37,13 +37,13 @@ var rootCmd = &cobra.Command{
 		}
 
 		// Create backend
-		backend := mem.NewDirectory(
-			mem.WithDirectoryLogger(logger))
+		b := chonker.NewDirectory(
+			chonker.WithDirectoryLogger(logger))
 
 		// Create chonkfs
-		chFS := chonkfs.NewDirectory(backend,
-			chonkfs.WithDirectoryLogger(logger),
-			chonkfs.WithDirectoryChunkSize(chunkSize))
+		chFS := wrapper.NewDirectory(b,
+			wrapper.WithDirectoryLogger(logger),
+			wrapper.WithDirectoryChunkSize(chunkSize))
 
 		// Create server
 		server, err := fs.Mount(path, chFS, &fs.Options{
@@ -67,7 +67,7 @@ func main() {
 	// Set flags
 	rootCmd.PersistentFlags().StringVarP(&path, "path", "p", "", "Set mount path")
 	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "Enable debug mode")
-	rootCmd.PersistentFlags().IntVarP(&chunkSize, "chunk-size", "s", chonkfs.DefaultChunkSize, "Set chunk size")
+	rootCmd.PersistentFlags().IntVarP(&chunkSize, "chunk-size", "s", wrapper.DefaultChunkSize, "Set chunk size")
 
 	// Execute command
 	if err := rootCmd.Execute(); err != nil {

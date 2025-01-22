@@ -7,7 +7,7 @@
 //
 
 // Package backends is a generated GoMock package.
-package backends
+package chonker
 
 import (
 	context "context"

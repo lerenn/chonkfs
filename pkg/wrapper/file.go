@@ -1,4 +1,4 @@
-package chonkfs
+package wrapper
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 
 	"github.com/hanwen/go-fuse/v2/fs"
 	"github.com/hanwen/go-fuse/v2/fuse"
-	"github.com/lerenn/chonkfs/pkg/backends"
+	"github.com/lerenn/chonkfs/pkg/chonker"
 )
 
 type FileOption func(fl *File)
@@ -48,7 +48,7 @@ var (
 type File struct {
 	fs.Inode
 
-	backend      backends.File
+	backend      chonker.File
 	sessionFlags uint32
 
 	// Optional
@@ -59,7 +59,7 @@ type File struct {
 	chunkSize int
 }
 
-func NewFile(backend backends.File, options ...FileOption) *File {
+func NewFile(backend chonker.File, options ...FileOption) *File {
 	// Create default file
 	f := &File{
 		backend:   backend,
@@ -83,8 +83,8 @@ func (fl *File) Getattr(ctx context.Context, out *fuse.AttrOut) (errno syscall.E
 	// Get attributes from backend
 	attr, err := fl.backend.GetAttributes(ctx)
 	if err != nil {
-		return backends.ToSyscallErrno(err,
-			backends.ToSyscallErrnoOptions{
+		return chonker.ToSyscallErrno(err,
+			chonker.ToSyscallErrnoOptions{
 				Logger: fl.logger,
 			})
 	}
@@ -101,8 +101,8 @@ func (fl *File) Read(ctx context.Context, dest []byte, off int64) (fuse.ReadResu
 	// Get content from file
 	err := fl.backend.Read(ctx, dest, int(off))
 	if err != nil {
-		return nil, backends.ToSyscallErrno(err,
-			backends.ToSyscallErrnoOptions{
+		return nil, chonker.ToSyscallErrno(err,
+			chonker.ToSyscallErrnoOptions{
 				Logger: fl.logger,
 			})
 	}
@@ -126,12 +126,12 @@ func (fl *File) Write(ctx context.Context, data []byte, off int64) (written uint
 	fl.logger.Printf("File[%s].Write(len=%d, off=%d)\n", fl.name, len(data), off)
 
 	// Write content to file
-	w, err := fl.backend.Write(ctx, data, int(off), backends.WriteOptions{
+	w, err := fl.backend.Write(ctx, data, int(off), chonker.WriteOptions{
 		Truncate: fl.sessionFlags&syscall.O_TRUNC != 0,
 		Append:   fl.sessionFlags&syscall.O_APPEND != 0,
 	})
-	return uint32(w), backends.ToSyscallErrno(err,
-		backends.ToSyscallErrnoOptions{
+	return uint32(w), chonker.ToSyscallErrno(err,
+		chonker.ToSyscallErrnoOptions{
 			Logger: fl.logger,
 		})
 }
@@ -140,9 +140,9 @@ func (fl *File) Fsync(ctx context.Context, flags uint32) syscall.Errno {
 	fl.logger.Printf("File[%s].Fsync(...)\n", fl.name)
 
 	// Sync cache on backend with underlying support
-	return backends.ToSyscallErrno(
+	return chonker.ToSyscallErrno(
 		fl.backend.Sync(ctx),
-		backends.ToSyscallErrnoOptions{
+		chonker.ToSyscallErrnoOptions{
 			Logger: fl.logger,
 		})
 }
@@ -153,8 +153,8 @@ func (fl *File) Setattr(ctx context.Context, f fs.FileHandle, in *fuse.SetAttrIn
 	// Get actual size
 	actualSize, err := fl.backend.Size(ctx)
 	if err != nil {
-		return backends.ToSyscallErrno(err,
-			backends.ToSyscallErrnoOptions{
+		return chonker.ToSyscallErrno(err,
+			chonker.ToSyscallErrnoOptions{
 				Logger: fl.logger,
 			})
 	}
@@ -162,16 +162,16 @@ func (fl *File) Setattr(ctx context.Context, f fs.FileHandle, in *fuse.SetAttrIn
 	// Truncate the file if needed
 	if in.Size < uint64(actualSize) {
 		if err := fl.backend.Truncate(ctx, int(in.Size)); err != nil {
-			return backends.ToSyscallErrno(err,
-				backends.ToSyscallErrnoOptions{
+			return chonker.ToSyscallErrno(err,
+				chonker.ToSyscallErrnoOptions{
 					Logger: fl.logger,
 				})
 		}
 	}
 
-	return backends.ToSyscallErrno(
+	return chonker.ToSyscallErrno(
 		fl.backend.SetAttributes(ctx, in),
-		backends.ToSyscallErrnoOptions{
+		chonker.ToSyscallErrnoOptions{
 			Logger: fl.logger,
 		})
 }
@@ -180,9 +180,9 @@ func (fl *File) Flush(ctx context.Context) syscall.Errno {
 	fl.logger.Printf("File[%s].Flush(...)\n", fl.name)
 
 	// Sync cache on backend with underlying support
-	return backends.ToSyscallErrno(
+	return chonker.ToSyscallErrno(
 		fl.backend.Sync(ctx),
-		backends.ToSyscallErrnoOptions{
+		chonker.ToSyscallErrnoOptions{
 			Logger: fl.logger,
 		})
 }

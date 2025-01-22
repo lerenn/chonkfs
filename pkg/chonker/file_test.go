@@ -1,15 +1,23 @@
-package test
+package chonker
 
 import (
 	"context"
+	"testing"
 
-	"github.com/lerenn/chonkfs/pkg/backends"
 	"github.com/stretchr/testify/suite"
 )
 
+func TestFileSuite(t *testing.T) {
+	suite.Run(t, new(FileSuite))
+}
+
 type FileSuite struct {
-	Directory backends.Directory
+	Directory Directory
 	suite.Suite
+}
+
+func (suite *FileSuite) SetupTest() {
+	suite.Directory = NewDirectory()
 }
 
 func (suite *FileSuite) TestReadWrite() {
@@ -19,7 +27,7 @@ func (suite *FileSuite) TestReadWrite() {
 	for i := 0; i < 10; i++ {
 		// Write a chunk
 		buf := []byte("Hello, world!")
-		written, err := f.Write(context.Background(), buf, i, backends.WriteOptions{})
+		written, err := f.Write(context.Background(), buf, i, WriteOptions{})
 		suite.Require().NoError(err)
 		suite.Require().Equal(len(buf), written)
 

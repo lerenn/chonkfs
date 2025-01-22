@@ -1,4 +1,4 @@
-package mem
+package chonker
 
 import (
 	"context"
@@ -6,10 +6,9 @@ import (
 	"log"
 
 	"github.com/hanwen/go-fuse/v2/fuse"
-	"github.com/lerenn/chonkfs/pkg/backends"
 )
 
-var _ backends.File = (*file)(nil)
+var _ File = (*file)(nil)
 
 type FileOption func(fl *file)
 
@@ -69,7 +68,7 @@ func (f *file) readAccrossChunks(data []byte, off int) {
 	}
 }
 
-func (f *file) Write(ctx context.Context, data []byte, off int, opts backends.WriteOptions) (written int, errno error) {
+func (f *file) Write(ctx context.Context, data []byte, off int, opts WriteOptions) (written int, errno error) {
 	// Check if there is enough space, and allocate what's missing
 	f.addMissingChunks(ctx, off+len(data))
 

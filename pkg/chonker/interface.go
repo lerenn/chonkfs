@@ -1,6 +1,6 @@
-//go:generate go run go.uber.org/mock/mockgen@v0.5.0 -source=backend.go -destination=backend.mock.gen.go -package backends
+//go:generate go run go.uber.org/mock/mockgen@v0.5.0 -source=interface.go -destination=interface.mock.gen.go -package backend
 
-package backends
+package chonker
 
 import (
 	"context"

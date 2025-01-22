@@ -1,4 +1,4 @@
-package mem
+package chonker
 
 import (
 	"context"
@@ -6,7 +6,6 @@ import (
 	"log"
 
 	"github.com/hanwen/go-fuse/v2/fuse"
-	"github.com/lerenn/chonkfs/pkg/backends"
 )
 
 type DirectoryOption func(dir *directory)
@@ -17,7 +16,7 @@ func WithDirectoryLogger(logger *log.Logger) DirectoryOption {
 	}
 }
 
-var _ backends.Directory = (*directory)(nil)
+var _ Directory = (*directory)(nil)
 
 type directory struct {
 	dirs   map[string]*directory
@@ -46,18 +45,18 @@ func NewDirectory(opts ...DirectoryOption) *directory {
 func (dir *directory) checkIfFileOrDirectoryAlreadyExists(name string) error {
 	// Check in directories
 	if _, ok := dir.dirs[name]; ok {
-		return backends.ErrAlreadyExists
+		return ErrAlreadyExists
 	}
 
 	// Check in files
 	if _, ok := dir.files[name]; ok {
-		return backends.ErrAlreadyExists
+		return ErrAlreadyExists
 	}
 
 	return nil
 }
 
-func (dir *directory) CreateDirectory(ctx context.Context, name string) (backends.Directory, error) {
+func (dir *directory) CreateDirectory(ctx context.Context, name string) (Directory, error) {
 	// Check if it doesn't not exist already
 	if err := dir.checkIfFileOrDirectoryAlreadyExists(name); err != nil {
 		return nil, err
@@ -72,26 +71,26 @@ func (dir *directory) CreateDirectory(ctx context.Context, name string) (backend
 	return c, nil
 }
 
-func (dir *directory) GetDirectory(ctx context.Context, name string) (backends.Directory, error) {
+func (dir *directory) GetDirectory(ctx context.Context, name string) (Directory, error) {
 	// Check if this is not already a file
 	if _, ok := dir.files[name]; ok {
-		return nil, backends.ErrNotDirectory
+		return nil, ErrNotDirectory
 	}
 
 	// Get and check if it exists
 	d, ok := dir.dirs[name]
 	if !ok {
-		return nil, backends.ErrNoEntry
+		return nil, ErrNoEntry
 	}
 
 	return d, nil
 }
 
-func (dir *directory) GetFile(ctx context.Context, name string) (backends.File, error) {
+func (dir *directory) GetFile(ctx context.Context, name string) (File, error) {
 	// Get and check if it exists
 	f, ok := dir.files[name]
 	if !ok {
-		return nil, backends.ErrNoEntry
+		return nil, ErrNoEntry
 	}
 
 	return f, nil
@@ -121,7 +120,7 @@ func (dir *directory) ListEntries(ctx context.Context) ([]fuse.DirEntry, error) 
 	return list, nil
 }
 
-func (dir *directory) CreateFile(ctx context.Context, name string, chunkSize int) (backends.File, error) {
+func (dir *directory) CreateFile(ctx context.Context, name string, chunkSize int) (File, error) {
 	// Check if it doesn't not exist already
 	if err := dir.checkIfFileOrDirectoryAlreadyExists(name); err != nil {
 		return nil, err
@@ -140,7 +139,7 @@ func (dir *directory) CreateFile(ctx context.Context, name string, chunkSize int
 func (dir *directory) RemoveDirectory(ctx context.Context, name string) error {
 	// Check if it exists
 	if _, ok := dir.dirs[name]; !ok {
-		return backends.ErrNoEntry
+		return ErrNoEntry
 	}
 
 	// Remove it from memory
@@ -152,7 +151,7 @@ func (dir *directory) RemoveDirectory(ctx context.Context, name string) error {
 func (dir *directory) RemoveFile(ctx context.Context, name string) error {
 	// Check if it exists
 	if _, ok := dir.files[name]; !ok {
-		return backends.ErrNoEntry
+		return ErrNoEntry
 	}
 
 	// Remove it from memory
@@ -171,7 +170,7 @@ func (dir *directory) SetAttributes(ctx context.Context, in *fuse.SetAttrIn) err
 	return nil
 }
 
-func (dir *directory) RenameEntry(ctx context.Context, name string, newParent backends.Directory, newName string) error {
+func (dir *directory) RenameEntry(ctx context.Context, name string, newParent Directory, newName string) error {
 	// Get the directory or the file
 	d, dirExist := dir.dirs[name]
 	f, fileExist := dir.files[name]
@@ -190,7 +189,7 @@ func (dir *directory) RenameEntry(ctx context.Context, name string, newParent ba
 		newParent.(*directory).files[newName] = f
 		delete(dir.files, name)
 	default:
-		return backends.ErrNoEntry
+		return ErrNoEntry
 	}
 
 	return nil
