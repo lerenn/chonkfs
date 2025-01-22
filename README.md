@@ -4,7 +4,7 @@ FUSE file-system that split files in chunks and save them remotely.
 Made for protocols such as torrent based systems. 
 
 <p align="center">
-<img src="./assets/chonker.png" alt="avatar" width="200"/>
+<img src="./assets/chonker.png" alt="avatar" width="300"/>
 </p>
 
 <p align="center">
