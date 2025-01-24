@@ -2,7 +2,6 @@ package test
 
 import (
 	"context"
-	"fmt"
 	"math/rand"
 	"os"
 	"strings"
@@ -12,7 +11,7 @@ import (
 	"github.com/hanwen/go-fuse/v2/fuse"
 	"github.com/lerenn/chonkfs/pkg/chonker"
 	"github.com/lerenn/chonkfs/pkg/storage/mem"
-	fuse1 "github.com/lerenn/chonkfs/pkg/wrapper"
+	"github.com/lerenn/chonkfs/pkg/wrapper"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -51,8 +50,8 @@ func (suite *Suite) createChonkFS(
 	suite.Require().NoError(err)
 
 	// Create a chonkfs
-	chFS := fuse1.NewDirectory(backend,
-		fuse1.WithDirectoryChunkSize(chunkSize))
+	chFS := wrapper.NewDirectory(backend,
+		wrapper.WithDirectoryChunkSize(chunkSize))
 
 	// Mount the ChonkFS
 	server, err = fs.Mount(path, chFS, &fs.Options{
@@ -167,7 +166,6 @@ func (suite *Suite) TestRandomReadWrite() {
 	buf := []byte("hello")
 	for i := 0; i < 100; i++ {
 		pos := rand.Intn(100)
-		fmt.Println(pos, len(buf))
 
 		// Write buffer at random position
 		w, err := f.WriteAt(buf, int64(pos))

@@ -2,6 +2,7 @@ package mem
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/lerenn/chonkfs/pkg/storage"
 )
@@ -32,12 +33,12 @@ func (f *File) ReadChunk(ctx context.Context, chunkIndex int, data []byte, start
 
 	// Check if the start is valid
 	if start < 0 || start >= len(f.data[chunkIndex]) {
-		return 0, storage.ErrInvalidStartOffset
+		return 0, fmt.Errorf("%w: start is %d", storage.ErrInvalidStartOffset, start)
 	}
 
 	// Check if the end is valid
 	if end != nil && (*end < 0 || *end > len(f.data[chunkIndex])) {
-		return 0, storage.ErrInvalidEndOffset
+		return 0, fmt.Errorf("%w: end is %d", storage.ErrInvalidEndOffset, start)
 	}
 
 	// Set the end if it is nil
@@ -55,6 +56,7 @@ func (f *File) ChunksCount(ctx context.Context) (int, error) {
 }
 
 func (f *File) WriteChunk(ctx context.Context, chunkIndex int, start int, end *int, data []byte) (int, error) {
+
 	// Check if the chunk index is valid
 	if chunkIndex < 0 || chunkIndex >= len(f.data) {
 		return 0, storage.ErrInvalidChunkNb
@@ -62,12 +64,12 @@ func (f *File) WriteChunk(ctx context.Context, chunkIndex int, start int, end *i
 
 	// Check if the start is valid
 	if start < 0 || start >= len(f.data[chunkIndex]) {
-		return 0, storage.ErrInvalidStartOffset
+		return 0, fmt.Errorf("%w: start is %d", storage.ErrInvalidStartOffset, start)
 	}
 
 	// Check if the end is valid
 	if end != nil && (*end < 0 || *end > len(f.data[chunkIndex])) {
-		return 0, storage.ErrInvalidEndOffset
+		return 0, fmt.Errorf("%w: end is %d", storage.ErrInvalidEndOffset, start)
 	}
 
 	// Set the end if it is nil
@@ -140,4 +142,13 @@ func (f *File) Size(ctx context.Context) (int, error) {
 	// Return the count of all chunks except the last one, multiplied by the chunk size
 	// + the length of the last chunk
 	return (size-1)*f.chunkSize + len(f.data[size-1]), nil
+}
+
+func (f *File) LastChunkSize(ctx context.Context) (int, error) {
+	// Check if there is no data
+	if len(f.data) == 0 {
+		return 0, storage.ErrNoChunk
+	}
+
+	return len(f.data[len(f.data)-1]), nil
 }

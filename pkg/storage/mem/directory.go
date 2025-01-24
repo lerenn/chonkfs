@@ -2,6 +2,8 @@ package mem
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/lerenn/chonkfs/pkg/storage"
 )
@@ -68,7 +70,7 @@ func (d *Directory) ListDirectories(ctx context.Context) (map[string]storage.Dir
 
 func (d *Directory) CreateFile(ctx context.Context, name string, chunkSize int) (storage.File, error) {
 	if _, exist := d.files[name]; exist {
-		return nil, storage.ErrFileAlreadyExists
+		return nil, fmt.Errorf("couldn't create file %q: %w", name, storage.ErrFileAlreadyExists)
 	}
 
 	f := newFile(chunkSize)
@@ -94,15 +96,15 @@ func (d *Directory) RemoveFile(ctx context.Context, name string) error {
 
 func (d *Directory) checkIfFileOrDirectoryAlreadyExists(name string) error {
 	if _, exist := d.directories[name]; exist {
-		return storage.ErrDirectoryAlreadyExists
+		return fmt.Errorf("%w: %q", storage.ErrDirectoryAlreadyExists, name)
 	}
 	if _, exist := d.files[name]; exist {
-		return storage.ErrFileAlreadyExists
+		return fmt.Errorf("%w: %q", storage.ErrFileAlreadyExists, name)
 	}
 	return nil
 }
 
-func (d *Directory) RenameFile(ctx context.Context, name string, newParent storage.Directory, newName string) error {
+func (d *Directory) RenameFile(ctx context.Context, name string, newParent storage.Directory, newName string, noReplace bool) error {
 	// Get the directory or the file
 	f, fileExist := d.files[name]
 	if !fileExist {
@@ -111,7 +113,13 @@ func (d *Directory) RenameFile(ctx context.Context, name string, newParent stora
 
 	// Check if it doesn't not exist already
 	if err := newParent.(*Directory).checkIfFileOrDirectoryAlreadyExists(newName); err != nil {
-		return err
+		if errors.Is(err, storage.ErrFileAlreadyExists) && noReplace {
+			// If noReplace is set and the file already exists, return error
+			return err
+		} else {
+			// If another error, then return
+			return err
+		}
 	}
 
 	// Add it to new parent and remove it from current parent
@@ -121,7 +129,7 @@ func (d *Directory) RenameFile(ctx context.Context, name string, newParent stora
 	return nil
 }
 
-func (d *Directory) RenameDirectory(ctx context.Context, name string, newParent storage.Directory, newName string) error {
+func (d *Directory) RenameDirectory(ctx context.Context, name string, newParent storage.Directory, newName string, noReplace bool) error {
 	// Get the directory or the file
 	dir, dirExist := d.directories[name]
 	if !dirExist {
@@ -130,7 +138,13 @@ func (d *Directory) RenameDirectory(ctx context.Context, name string, newParent 
 
 	// Check if it doesn't not exist already
 	if err := newParent.(*Directory).checkIfFileOrDirectoryAlreadyExists(newName); err != nil {
-		return err
+		if errors.Is(err, storage.ErrDirectoryAlreadyExists) && noReplace {
+			// If noReplace is set and the file already exists, return error
+			return err
+		} else {
+			// If another error, then return
+			return err
+		}
 	}
 
 	// Add it to new parent and remove it from current parent

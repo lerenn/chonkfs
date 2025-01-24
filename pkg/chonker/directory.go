@@ -172,8 +172,18 @@ func (dir *directory) ListFiles(ctx context.Context) ([]string, error) {
 	return slices.Collect(maps.Keys(m)), nil
 }
 
-func (dir *directory) RenameFile(ctx context.Context, name string, newParent Directory, newName string) error {
-	return dir.storageDir.RenameFile(ctx, name, newParent.(*directory).storageDir, newName)
+func (dir *directory) RenameFile(ctx context.Context, name string, newParent Directory, newName string, noReplace bool) error {
+	err := dir.storageDir.RenameFile(ctx, name, newParent.(*directory).storageDir, newName, noReplace)
+	switch {
+	case err == nil:
+		return nil
+	case errors.Is(err, storage.ErrFileNotExists):
+		return ErrNoEntry
+	case errors.Is(err, storage.ErrFileAlreadyExists):
+		return ErrAlreadyExists
+	default:
+		return fmt.Errorf("%w: %w", ErrChonker, err)
+	}
 }
 
 func (dir *directory) ListDirectories(ctx context.Context) ([]string, error) {
@@ -185,6 +195,16 @@ func (dir *directory) ListDirectories(ctx context.Context) ([]string, error) {
 	return slices.Collect(maps.Keys(m)), nil
 }
 
-func (dir *directory) RenameDirectory(ctx context.Context, name string, newParent Directory, newName string) error {
-	return dir.storageDir.RenameDirectory(ctx, name, newParent.(*directory).storageDir, newName)
+func (dir *directory) RenameDirectory(ctx context.Context, name string, newParent Directory, newName string, noReplace bool) error {
+	err := dir.storageDir.RenameDirectory(ctx, name, newParent.(*directory).storageDir, newName, noReplace)
+	switch {
+	case err == nil:
+		return nil
+	case errors.Is(err, storage.ErrDirectoryNotExists):
+		return ErrNoEntry
+	case errors.Is(err, storage.ErrDirectoryAlreadyExists):
+		return ErrAlreadyExists
+	default:
+		return fmt.Errorf("%w: %w", ErrChonker, err)
+	}
 }

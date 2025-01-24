@@ -75,8 +75,24 @@ func (f *file) readAccrossChunks(ctx context.Context, dest []byte, off int) ([]b
 		return nil, err
 	}
 
+	// Check if the offset is valid
+	chunkNb := off / f.chunkSize
+	if chunkNb >= totalChunk {
+		return []byte{}, nil
+	} else if chunkNb == totalChunk-1 {
+		ls, err := f.storageFile.LastChunkSize(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		if off%f.chunkSize >= ls {
+			return []byte{}, nil
+		}
+	}
+
+	// Loop accross chunks
 	read := 0
-	for chunkNb := off / f.chunkSize; read < len(dest) && chunkNb < totalChunk; chunkNb++ {
+	for ; read < len(dest) && chunkNb < totalChunk; chunkNb++ {
 		if read == 0 {
 			r, err := f.storageFile.ReadChunk(ctx, chunkNb, dest, off%f.chunkSize, nil)
 			if err != nil {
@@ -92,9 +108,9 @@ func (f *file) readAccrossChunks(ctx context.Context, dest []byte, off int) ([]b
 		}
 	}
 
-	// Reduce dest to the actual read size if needed
-	if len(dest) > read {
-		dest = dest[:off+read]
+	// Check if the read is less than the destination size
+	if read < len(dest) {
+		return dest[:read], nil
 	}
 
 	return dest, nil

@@ -16,7 +16,7 @@ type Directory interface {
 	GetDirectory(ctx context.Context, name string) (Directory, error)
 	RemoveDirectory(ctx context.Context, name string) error
 	ListDirectories(ctx context.Context) ([]string, error)
-	RenameDirectory(ctx context.Context, name string, newParent Directory, newName string) error
+	RenameDirectory(ctx context.Context, name string, newParent Directory, newName string, noReplace bool) error
 
 	// Children files
 
@@ -24,7 +24,7 @@ type Directory interface {
 	GetFile(ctx context.Context, name string) (File, error)
 	RemoveFile(ctx context.Context, name string) error
 	ListFiles(ctx context.Context) ([]string, error)
-	RenameFile(ctx context.Context, name string, newParent Directory, newName string) error
+	RenameFile(ctx context.Context, name string, newParent Directory, newName string, noReplace bool) error
 }
 
 type File interface {

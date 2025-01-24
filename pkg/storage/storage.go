@@ -12,7 +12,7 @@ type Directory interface {
 	ListDirectories(ctx context.Context) (map[string]Directory, error)
 	Info(ctx context.Context) (DirectoryInfo, error)
 	RemoveDirectory(ctx context.Context, name string) error
-	RenameDirectory(ctx context.Context, name string, newParent Directory, newName string) error
+	RenameDirectory(ctx context.Context, name string, newParent Directory, newName string, noReplace bool) error
 
 	// Files
 
@@ -20,7 +20,7 @@ type Directory interface {
 	ListFiles(ctx context.Context) (map[string]File, error)
 	CreateFile(ctx context.Context, name string, chunkSize int) (File, error)
 	RemoveFile(ctx context.Context, name string) error
-	RenameFile(ctx context.Context, name string, newParent Directory, newName string) error
+	RenameFile(ctx context.Context, name string, newParent Directory, newName string, noReplace bool) error
 }
 
 type DirectoryInfo struct {
@@ -32,6 +32,7 @@ type File interface {
 	ReadChunk(ctx context.Context, chunkIndex int, data []byte, start int, end *int) (int, error)
 	ChunksCount(ctx context.Context) (int, error)
 	ResizeChunksNb(ctx context.Context, size int) error
+	LastChunkSize(ctx context.Context) (int, error)
 	ResizeLastChunk(ctx context.Context, size int) (changed int, err error)
 	Info(ctx context.Context) (FileInfo, error)
 }

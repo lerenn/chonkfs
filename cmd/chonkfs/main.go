@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/hanwen/go-fuse/v2/fs"
 	"github.com/lerenn/chonkfs/pkg/chonker"
@@ -37,13 +38,10 @@ var rootCmd = &cobra.Command{
 			logger = log.New(os.Stdout, "", 0)
 		}
 
-		// Create storage
-		storage := mem.NewDirectory()
-
 		// Create chonker
 		c, err := chonker.NewDirectory(
 			cmd.Context(),
-			storage,
+			mem.NewDirectory(),
 			chonker.WithDirectoryLogger(logger))
 		if err != nil {
 			return err
@@ -55,10 +53,13 @@ var rootCmd = &cobra.Command{
 			wrapper.WithDirectoryChunkSize(chunkSize))
 
 		// Create FUSE server
+		to := time.Duration(1)
 		server, err := fs.Mount(path, w, &fs.Options{
-			Logger: logger,
-			UID:    uint32(os.Getuid()),
-			GID:    uint32(os.Getgid()),
+			Logger:       logger,
+			UID:          uint32(os.Getuid()),
+			GID:          uint32(os.Getgid()),
+			EntryTimeout: &to,
+			AttrTimeout:  &to,
 		})
 		if err != nil {
 			return err

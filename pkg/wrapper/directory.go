@@ -10,6 +10,7 @@ import (
 	"github.com/hanwen/go-fuse/v2/fs"
 	"github.com/hanwen/go-fuse/v2/fuse"
 	"github.com/lerenn/chonkfs/pkg/chonker"
+	"golang.org/x/sys/unix"
 )
 
 type DirectoryOption func(dir *Directory)
@@ -38,8 +39,11 @@ var (
 	_ fs.NodeReaddirer = (*Directory)(nil)
 	_ fs.NodeRmdirer   = (*Directory)(nil)
 	_ fs.NodeSetattrer = (*Directory)(nil)
+	_ fs.NodeStatxer   = (*Directory)(nil)
 	_ fs.NodeUnlinker  = (*Directory)(nil)
 )
+
+const dirMode = syscall.S_IFDIR | syscall.S_IRWXU | syscall.S_IRGRP | syscall.S_IXGRP | syscall.S_IROTH | syscall.S_IXOTH
 
 type Directory struct {
 	fs.Inode
@@ -100,10 +104,17 @@ func (d *Directory) Create(
 func (d *Directory) Getattr(ctx context.Context, fh fs.FileHandle, out *fuse.AttrOut) syscall.Errno {
 	d.logger.Printf("Directory.Getattr(...)\n")
 
-	out.Attr = fuse.Attr{
-		Mode:    1755,
-		Blksize: uint32(d.chunkSize),
-	}
+	out.Mode = dirMode
+	out.Blksize = uint32(d.chunkSize)
+
+	return fs.OK
+}
+
+func (d *Directory) Statx(ctx context.Context, f fs.FileHandle, flags uint32, mask uint32, out *fuse.StatxOut) syscall.Errno {
+	d.logger.Printf("Directory.Statx(...)\n")
+
+	out.Mode = dirMode
+	out.Blksize = uint32(d.chunkSize)
 
 	return fs.OK
 }
@@ -117,7 +128,11 @@ func (d *Directory) Lookup(ctx context.Context, name string, out *fuse.EntryOut)
 	switch err {
 	case nil:
 		// Create inode
-		ino := d.NewInode(ctx, NewDirectory(backendChildDir, d.options...), fs.StableAttr{Mode: syscall.S_IFDIR})
+		ino := d.NewInode(ctx,
+			NewDirectory(backendChildDir, d.options...),
+			fs.StableAttr{
+				Mode: syscall.S_IFDIR,
+			})
 
 		// Set mode from backend
 		_, err := backendChildDir.GetAttributes(ctx)
@@ -126,13 +141,10 @@ func (d *Directory) Lookup(ctx context.Context, name string, out *fuse.EntryOut)
 				Logger: d.logger,
 			})
 		}
-		out.Attr = fuse.Attr{
-			Blksize: uint32(d.chunkSize),
-		}
 
-		// Add some info
-		out.Mode = 1755 // TODO: fixme
-		out.Ino = ino.StableAttr().Ino
+		// Add info
+		out.Blksize = uint32(d.chunkSize)
+		out.Mode = dirMode
 
 		// Return the inode
 		return ino, fs.OK
@@ -146,13 +158,14 @@ func (d *Directory) Lookup(ctx context.Context, name string, out *fuse.EntryOut)
 		}
 
 		// Create inode
-		ino := d.NewInode(
-			ctx,
+		ino := d.NewInode(ctx,
 			NewFile(backendChildFile,
 				WithFileLogger(d.logger),
 				WithFileChunkSize(d.chunkSize),
 				WithFileName(name)),
-			fs.StableAttr{Mode: syscall.S_IFREG})
+			fs.StableAttr{
+				Mode: syscall.S_IFREG,
+			})
 
 		// Set mode from backend
 		attr, err := backendChildFile.GetAttributes(ctx)
@@ -161,15 +174,12 @@ func (d *Directory) Lookup(ctx context.Context, name string, out *fuse.EntryOut)
 				Logger: d.logger,
 			})
 		}
-		out.Attr = fuse.Attr{
-			Size:    uint64(attr.Size),
-			Blocks:  uint64((attr.Size-1)/d.chunkSize + 1),
-			Blksize: uint32(d.chunkSize),
-		}
 
-		// Add some info
-		out.Mode = 0755 // TODO: fixme
-		out.Ino = ino.StableAttr().Ino
+		// Add info
+		out.Size = uint64(attr.Size)
+		out.Blocks = uint64((attr.Size-1)/d.chunkSize + 1)
+		out.Blksize = uint32(d.chunkSize)
+		out.Mode = fileMode
 
 		// Return the inode
 		return ino, fs.OK
@@ -192,7 +202,9 @@ func (d *Directory) Mkdir(ctx context.Context, name string, mode uint32, out *fu
 	}
 
 	// Return an inode with the chonkfs directory
-	return d.NewInode(ctx, NewDirectory(backendChildDir, d.options...), fs.StableAttr{Mode: syscall.S_IFDIR}), fs.OK
+	return d.NewInode(ctx,
+		NewDirectory(backendChildDir, d.options...),
+		fs.StableAttr{Mode: syscall.S_IFDIR}), fs.OK
 }
 
 func (d *Directory) Readdir(ctx context.Context) (fs.DirStream, syscall.Errno) {
@@ -261,7 +273,7 @@ func (d *Directory) Setattr(ctx context.Context, f fs.FileHandle, in *fuse.SetAt
 }
 
 func (d *Directory) Rename(ctx context.Context, name string, newParent fs.InodeEmbedder, newName string, flags uint32) syscall.Errno {
-	d.logger.Printf("Directory.Rename(...)\n")
+	d.logger.Printf("Directory.Rename(name=%q, newName=%q)\n", name, newName)
 
 	// Get the new parent directory
 	newParentDir, errno := d.getDirectoryFromInodeEmbedder(newParent)
@@ -269,6 +281,10 @@ func (d *Directory) Rename(ctx context.Context, name string, newParent fs.InodeE
 		return errno
 	}
 
+	// Check if no replace flag is set
+	noReplace := (flags & unix.RENAME_SECLUDE) == unix.RENAME_SECLUDE
+
+	// Check if the directory or file exists
 	_, err := d.backend.GetDirectory(ctx, name)
 
 	switch {
@@ -279,14 +295,14 @@ func (d *Directory) Rename(ctx context.Context, name string, newParent fs.InodeE
 		})
 	case errors.Is(err, chonker.ErrNotDirectory):
 		// It's a file
-		if err := d.backend.RenameFile(ctx, name, newParentDir.backend, newName); err != nil {
+		if err := d.backend.RenameFile(ctx, name, newParentDir.backend, newName, noReplace); err != nil {
 			return chonker.ToSyscallErrno(err, chonker.ToSyscallErrnoOptions{
 				Logger: d.logger,
 			})
 		}
 	default:
 		// No error: its a directory
-		if err := d.backend.RenameDirectory(ctx, name, newParentDir.backend, newName); err != nil {
+		if err := d.backend.RenameDirectory(ctx, name, newParentDir.backend, newName, noReplace); err != nil {
 			return chonker.ToSyscallErrno(err, chonker.ToSyscallErrnoOptions{
 				Logger: d.logger,
 			})

@@ -36,7 +36,7 @@ func ToSyscallErrno(err error, opts ToSyscallErrnoOptions) syscall.Errno {
 		return syscall.EEXIST
 	case ErrNoEntry:
 		return syscall.ENOENT
-	default: // Default to EBADMSG
-		return syscall.EBADMSG
+	default:
+		return syscall.EIO
 	}
 }

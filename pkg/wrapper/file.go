@@ -38,12 +38,15 @@ var (
 	_ fs.FileReader    = (*File)(nil)
 	_ fs.FileWriter    = (*File)(nil)
 	_ fs.FileFsyncer   = (*File)(nil)
+	_ fs.FileStatxer   = (*File)(nil)
 
 	_ fs.InodeEmbedder = (*File)(nil)
 
 	_ fs.NodeOpener    = (*File)(nil)
 	_ fs.NodeSetattrer = (*File)(nil)
 )
+
+const fileMode = syscall.S_IFREG | syscall.S_IRWXU | syscall.S_IRGRP | syscall.S_IXGRP | syscall.S_IROTH | syscall.S_IXOTH
 
 type File struct {
 	fs.Inode
@@ -90,11 +93,31 @@ func (fl *File) Getattr(ctx context.Context, out *fuse.AttrOut) (errno syscall.E
 	}
 
 	// Set attributes
-	out.Attr = fuse.Attr{
-		Mode:    0755, //TODO:fixme
-		Size:    uint64(attr.Size),
-		Blksize: uint32(fl.chunkSize),
+	out.Mode = fileMode
+	out.Size = uint64(attr.Size)
+	out.Blocks = uint64((attr.Size-1)/fl.chunkSize + 1)
+	out.Blksize = uint32(fl.chunkSize)
+
+	return fs.OK
+}
+
+func (fl *File) Statx(ctx context.Context, flags uint32, mask uint32, out *fuse.StatxOut) syscall.Errno {
+	fl.logger.Printf("File[%s].Statx(...)\n", fl.name)
+
+	// Get attributes from backend
+	attr, err := fl.backend.GetAttributes(ctx)
+	if err != nil {
+		return chonker.ToSyscallErrno(err,
+			chonker.ToSyscallErrnoOptions{
+				Logger: fl.logger,
+			})
 	}
+
+	// Set attributes
+	out.Mode = fileMode
+	out.Size = uint64(attr.Size)
+	out.Blocks = uint64((attr.Size-1)/fl.chunkSize + 1)
+	out.Blksize = uint32(fl.chunkSize)
 
 	return fs.OK
 }
