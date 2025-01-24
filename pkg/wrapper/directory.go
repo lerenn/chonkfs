@@ -2,6 +2,7 @@ package wrapper
 
 import (
 	"context"
+	"errors"
 	"io"
 	"log"
 	"syscall"
@@ -99,16 +100,10 @@ func (d *Directory) Create(
 func (d *Directory) Getattr(ctx context.Context, fh fs.FileHandle, out *fuse.AttrOut) syscall.Errno {
 	d.logger.Printf("Directory.Getattr(...)\n")
 
-	// Get attributes from backend
-	attr, err := d.backend.GetAttributes(ctx)
-	if err != nil {
-		return chonker.ToSyscallErrno(err, chonker.ToSyscallErrnoOptions{
-			Logger: d.logger,
-		})
+	out.Attr = fuse.Attr{
+		Mode:    1755,
+		Blksize: uint32(d.chunkSize),
 	}
-
-	// Set attributes
-	out.Attr = attr
 
 	return fs.OK
 }
@@ -125,13 +120,15 @@ func (d *Directory) Lookup(ctx context.Context, name string, out *fuse.EntryOut)
 		ino := d.NewInode(ctx, NewDirectory(backendChildDir, d.options...), fs.StableAttr{Mode: syscall.S_IFDIR})
 
 		// Set mode from backend
-		attr, err := backendChildDir.GetAttributes(ctx)
+		_, err := backendChildDir.GetAttributes(ctx)
 		if err != nil {
 			return nil, chonker.ToSyscallErrno(err, chonker.ToSyscallErrnoOptions{
 				Logger: d.logger,
 			})
 		}
-		out.Attr = attr
+		out.Attr = fuse.Attr{
+			Blksize: uint32(d.chunkSize),
+		}
 
 		// Add some info
 		out.Mode = 1755 // TODO: fixme
@@ -164,7 +161,11 @@ func (d *Directory) Lookup(ctx context.Context, name string, out *fuse.EntryOut)
 				Logger: d.logger,
 			})
 		}
-		out.Attr = attr
+		out.Attr = fuse.Attr{
+			Size:    uint64(attr.Size),
+			Blocks:  uint64((attr.Size-1)/d.chunkSize + 1),
+			Blksize: uint32(d.chunkSize),
+		}
 
 		// Add some info
 		out.Mode = 0755 // TODO: fixme
@@ -197,15 +198,41 @@ func (d *Directory) Mkdir(ctx context.Context, name string, mode uint32, out *fu
 func (d *Directory) Readdir(ctx context.Context) (fs.DirStream, syscall.Errno) {
 	d.logger.Printf("Directory.Readdir(...)\n")
 
-	// List entries from backend
-	l, err := d.backend.ListEntries(ctx)
+	list := make([]fuse.DirEntry, 0)
+
+	// Get directories
+	dirs, err := d.backend.ListDirectories(ctx)
 	if err != nil {
 		return nil, chonker.ToSyscallErrno(err, chonker.ToSyscallErrnoOptions{
 			Logger: d.logger,
 		})
 	}
 
-	return fs.NewListDirStream(l), fs.OK
+	// Add directories
+	for _, name := range dirs {
+		list = append(list, fuse.DirEntry{
+			Name: name,
+			Mode: fuse.S_IFDIR,
+		})
+	}
+
+	// Get files
+	files, err := d.backend.ListFiles(ctx)
+	if err != nil {
+		return nil, chonker.ToSyscallErrno(err, chonker.ToSyscallErrnoOptions{
+			Logger: d.logger,
+		})
+	}
+
+	// Add files
+	for _, name := range files {
+		list = append(list, fuse.DirEntry{
+			Name: name,
+			Mode: fuse.S_IFREG,
+		})
+	}
+
+	return fs.NewListDirStream(list), fs.OK
 }
 
 func (d *Directory) Rmdir(ctx context.Context, name string) syscall.Errno {
@@ -230,12 +257,7 @@ func (d *Directory) Unlink(ctx context.Context, name string) syscall.Errno {
 
 func (d *Directory) Setattr(ctx context.Context, f fs.FileHandle, in *fuse.SetAttrIn, out *fuse.AttrOut) syscall.Errno {
 	d.logger.Printf("Directory.Setattr(...)\n")
-	return chonker.ToSyscallErrno(
-		d.backend.SetAttributes(ctx, in),
-		chonker.ToSyscallErrnoOptions{
-			Logger: d.logger,
-		},
-	)
+	return fs.OK
 }
 
 func (d *Directory) Rename(ctx context.Context, name string, newParent fs.InodeEmbedder, newName string, flags uint32) syscall.Errno {
@@ -247,11 +269,28 @@ func (d *Directory) Rename(ctx context.Context, name string, newParent fs.InodeE
 		return errno
 	}
 
-	// Rename node on backend
-	if err := d.backend.RenameEntry(ctx, name, newParentDir.backend, newName); err != nil {
+	_, err := d.backend.GetDirectory(ctx, name)
+
+	switch {
+	case err != nil && !errors.Is(err, chonker.ErrNotDirectory):
+		// Error happened
 		return chonker.ToSyscallErrno(err, chonker.ToSyscallErrnoOptions{
 			Logger: d.logger,
 		})
+	case errors.Is(err, chonker.ErrNotDirectory):
+		// It's a file
+		if err := d.backend.RenameFile(ctx, name, newParentDir.backend, newName); err != nil {
+			return chonker.ToSyscallErrno(err, chonker.ToSyscallErrnoOptions{
+				Logger: d.logger,
+			})
+		}
+	default:
+		// No error: its a directory
+		if err := d.backend.RenameDirectory(ctx, name, newParentDir.backend, newName); err != nil {
+			return chonker.ToSyscallErrno(err, chonker.ToSyscallErrnoOptions{
+				Logger: d.logger,
+			})
+		}
 	}
 
 	return fs.OK

@@ -5,7 +5,7 @@ import (
 	"io"
 	"log"
 
-	"github.com/hanwen/go-fuse/v2/fuse"
+	"github.com/lerenn/chonkfs/pkg/storage"
 )
 
 var _ File = (*file)(nil)
@@ -19,17 +19,26 @@ func WithFileLogger(logger *log.Logger) FileOption {
 }
 
 type file struct {
-	data      [][]byte
-	chunkSize int
-	logger    *log.Logger
+	storageFile storage.File
+	path        string
+	chunkSize   int
+
+	opts   []FileOption
+	logger *log.Logger
 }
 
-func newFile(chunkSize int, opts ...FileOption) *file {
+func NewFile(
+	ctx context.Context,
+	s storage.File,
+	chunkSize int,
+	opts ...FileOption,
+) (File, error) {
 	// Create a default file
 	f := &file{
-		data:      make([][]byte, 0),
-		chunkSize: chunkSize,
-		logger:    log.New(io.Discard, "", 0),
+		storageFile: s,
+		chunkSize:   chunkSize,
+		opts:        opts,
+		logger:      log.New(io.Discard, "", 0),
 	}
 
 	// Apply options
@@ -37,47 +46,79 @@ func newFile(chunkSize int, opts ...FileOption) *file {
 		opt(f)
 	}
 
-	return f
+	return f, nil
 }
 
-func (f *file) GetAttributes(ctx context.Context) (fuse.Attr, error) {
-	size, _ := f.Size(ctx)
+func (f *file) GetAttributes(ctx context.Context) (FileAttributes, error) {
+	size, err := f.Size(ctx)
+	if err != nil {
+		return FileAttributes{}, err
+	}
 
-	return fuse.Attr{
-		Size: uint64(size),
+	return FileAttributes{
+		Size: size,
 	}, nil
 }
 
-func (f *file) SetAttributes(ctx context.Context, in *fuse.SetAttrIn) error {
-	// TODO
+func (f *file) SetAttributes(ctx context.Context, attr FileAttributes) error {
+	// Nothing to do (yet)
 	return nil
 }
 
-func (f *file) Read(ctx context.Context, data []byte, off int) error {
-	f.readAccrossChunks(data, off)
-	return nil
+func (f *file) Read(ctx context.Context, dest []byte, off int) ([]byte, error) {
+	return f.readAccrossChunks(ctx, dest, off)
 }
 
-func (f *file) readAccrossChunks(data []byte, off int) {
-	for chunkNb, read := off/f.chunkSize, 0; read < len(data) && chunkNb < len(f.data); chunkNb++ {
+func (f *file) readAccrossChunks(ctx context.Context, dest []byte, off int) ([]byte, error) {
+	totalChunk, err := f.storageFile.ChunksCount(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	read := 0
+	for chunkNb := off / f.chunkSize; read < len(dest) && chunkNb < totalChunk; chunkNb++ {
 		if read == 0 {
-			read += copy(data, f.data[chunkNb][off%f.chunkSize:])
+			r, err := f.storageFile.ReadChunk(ctx, chunkNb, dest, off%f.chunkSize, nil)
+			if err != nil {
+				return nil, err
+			}
+			read += r
 		} else {
-			read += copy(data[read:], f.data[chunkNb])
+			r, err := f.storageFile.ReadChunk(ctx, chunkNb, dest[read:], 0, nil)
+			if err != nil {
+				return nil, err
+			}
+			read += r
 		}
 	}
+
+	// Reduce dest to the actual read size if needed
+	if len(dest) > read {
+		dest = dest[:off+read]
+	}
+
+	return dest, nil
 }
 
-func (f *file) Write(ctx context.Context, data []byte, off int, opts WriteOptions) (written int, errno error) {
+func (f *file) Write(ctx context.Context, data []byte, off int, opts WriteOptions) (written int, err error) {
 	// Check if there is enough space, and allocate what's missing
-	f.addMissingChunks(ctx, off+len(data))
+	if err := f.resizeChunks(ctx, off+len(data)); err != nil {
+		return 0, err
+	}
 
 	// Check if we need to append
 	if opts.Append {
-		f.append(ctx, data)
+		if err := f.append(ctx, data); err != nil {
+			return 0, err
+		}
+
+		written = len(data)
 	} else {
 		// Write the data
-		f.writeAccrossChunks(data, off)
+		written, err = f.writeAccrossChunks(ctx, data, off)
+		if err != nil {
+			return 0, err
+		}
 
 		// Check if truncate is needed
 		if opts.Truncate {
@@ -87,115 +128,140 @@ func (f *file) Write(ctx context.Context, data []byte, off int, opts WriteOption
 		}
 	}
 
-	return len(data), nil
+	return written, nil
 }
 
-func (f *file) append(ctx context.Context, data []byte) {
-	oldSize, _ := f.Size(ctx)
+func (f *file) append(ctx context.Context, data []byte) error {
+	oldSize, err := f.Size(ctx)
+	if err != nil {
+		return err
+	}
 
 	// Add missing chunks
-	f.addMissingChunks(ctx, oldSize+len(data))
+	if err := f.resizeChunks(ctx, oldSize+len(data)); err != nil {
+		return err
+	}
 
 	// Write the data at the end
-	f.writeAccrossChunks(data, oldSize)
+	_, err = f.writeAccrossChunks(ctx, data, oldSize)
+	return err
 }
 
 func (f *file) Truncate(ctx context.Context, newSize int) error {
 	// Check if we need to truncate
-	oldSize, _ := f.Size(ctx)
-	if newSize >= oldSize {
+	oldSize, err := f.Size(ctx)
+	if err != nil {
+		return err
+	} else if newSize >= oldSize {
 		return nil
 	}
 
-	// Check if we need to truncate the last chunk
+	// Check if we need to truncate the last chunk, and remove the chunks after the new last one
 	// NOTE: -1 is used to avoid the case where the last chunk is full
-	if (oldSize-1)/f.chunkSize == (newSize-1)/f.chunkSize {
-		newSize -= f.truncateLastChunk(newSize % f.chunkSize)
-		if newSize == 0 {
-			return nil
+	if (oldSize-1)/f.chunkSize != (newSize-1)/f.chunkSize {
+		lastChunkNb := newSize / f.chunkSize
+		if err := f.storageFile.ResizeChunksNb(ctx, lastChunkNb); err != nil {
+			return err
 		}
 	}
 
-	// Compute the new last chunk number
-	lastChunkNb := newSize / f.chunkSize
-	partialLastChunkSize := newSize % f.chunkSize
-
-	// Remove all the chunks after the new last one
-	f.data = f.data[:lastChunkNb]
-
 	// Truncate the last chunk if needed
+	partialLastChunkSize := newSize % f.chunkSize
 	if partialLastChunkSize > 0 {
-		f.data[lastChunkNb] = f.data[lastChunkNb][:partialLastChunkSize]
+		if _, err := f.storageFile.ResizeLastChunk(ctx, partialLastChunkSize); err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
-func (f *file) truncateLastChunk(newSize int) (truncated int) {
-	oldSize := len(f.data[len(f.data)-1])
-	if oldSize > newSize {
-		// The last chunk size is bigger than the new size: truncate it then stop
-		f.data[len(f.data)-1] = f.data[len(f.data)-1][:newSize]
-		return newSize
-	} else if oldSize == newSize {
-		// The last chunk size is equal to the new size: remove it then stop
-		f.data = f.data[:len(f.data)-1]
-		return newSize
-	} else {
-		// The last chunk size is smaller than the new size: remove it and continue
-		f.data = f.data[:len(f.data)-1]
-		return newSize - oldSize
-	}
-}
-
 func (f *file) Size(ctx context.Context) (int, error) {
-	if len(f.data) == 0 {
-		return 0, nil
-	}
-
-	completeChunksNb := len(f.data) - 1
-	lastChunk := f.data[len(f.data)-1]
-	return completeChunksNb*f.chunkSize + len(lastChunk), nil
+	return f.storageFile.Size(ctx)
 }
 
-func (f *file) addMissingChunks(ctx context.Context, total int) {
+func (f *file) resizeChunks(ctx context.Context, total int) error {
 	// Check if there is enough space, and allocate what's missing
-	size, _ := f.Size(ctx)
-	if int(total) <= size {
-		return
+	size, err := f.Size(ctx)
+	if err != nil {
+		return err
+	} else if int(total) <= size {
+		return err
 	}
 
-	// Check if the last chunk is not full
-	lastChunkNb := len(f.data) - 1
-	if len(f.data) > 0 && len(f.data[lastChunkNb]) < f.chunkSize {
-		// Add the missing space to make it full and substract it from the total
-		f.data[lastChunkNb] = append(f.data[lastChunkNb], make([]byte, f.chunkSize-len(f.data[lastChunkNb]))...)
-		total -= f.chunkSize - len(f.data[lastChunkNb])
+	chunkNb, err := f.storageFile.ChunksCount(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Check if the last chunk is not full, make it full if needed
+	if size%f.chunkSize != 0 {
+		// Ask for a full resize
+		resize := f.chunkSize
+
+		// However, if the total size is smaller than the chunk size, resize to the total size
+		if total-size < f.chunkSize {
+			resize = total - (chunkNb-1)*f.chunkSize
+		}
+
+		// Resize the last chunk
+		added, err := f.storageFile.ResizeLastChunk(ctx, resize)
+		if err != nil {
+			return err
+		}
+		total -= added
+
+		// If there is nothing else to do, return
+		if total == size {
+			return nil
+		}
 	}
 
 	// Get the total number of full chunks and the size of the last chunk
 	fullChunksToAdd := total / f.chunkSize
 	partialLastChunkToAdd := total % f.chunkSize
+	if partialLastChunkToAdd > 0 {
+		fullChunksToAdd++
+	}
 
 	// Add the missing chunks
-	for i := 0; i < fullChunksToAdd; i++ {
-		f.data = append(f.data, make([]byte, f.chunkSize))
+	if err := f.storageFile.ResizeChunksNb(ctx, fullChunksToAdd); err != nil {
+		return err
 	}
 
-	// Add the last chunk if needed
+	// Truncate the last chunk if needed
 	if partialLastChunkToAdd > 0 {
-		f.data = append(f.data, make([]byte, partialLastChunkToAdd))
-	}
-}
-
-func (f *file) writeAccrossChunks(data []byte, off int) {
-	for chunkNb, written := off/f.chunkSize, 0; written < len(data) && chunkNb < len(f.data); chunkNb++ {
-		if written == 0 {
-			written += copy(f.data[chunkNb][off%f.chunkSize:], data[written:])
-		} else {
-			written += copy(f.data[chunkNb], data[written:])
+		if _, err := f.storageFile.ResizeLastChunk(ctx, partialLastChunkToAdd); err != nil {
+			return err
 		}
 	}
+
+	return nil
+}
+
+func (f *file) writeAccrossChunks(ctx context.Context, data []byte, off int) (written int, err error) {
+	size, err := f.Size(ctx)
+	if err != nil {
+		return 0, err
+	}
+
+	for chunkNb := off / f.chunkSize; written < len(data) && chunkNb < size; chunkNb++ {
+		if written == 0 {
+			w, err := f.storageFile.WriteChunk(ctx, chunkNb, off%f.chunkSize, nil, data)
+			if err != nil {
+				return 0, err
+			}
+			written += w
+		} else {
+			w, err := f.storageFile.WriteChunk(ctx, chunkNb, 0, nil, data[written:])
+			if err != nil {
+				return 0, err
+			}
+			written += w
+		}
+	}
+
+	return written, nil
 }
 
 func (f *file) Sync(ctx context.Context) error {

@@ -90,7 +90,11 @@ func (fl *File) Getattr(ctx context.Context, out *fuse.AttrOut) (errno syscall.E
 	}
 
 	// Set attributes
-	out.Attr = attr
+	out.Attr = fuse.Attr{
+		Mode:    0755, //TODO:fixme
+		Size:    uint64(attr.Size),
+		Blksize: uint32(fl.chunkSize),
+	}
 
 	return fs.OK
 }
@@ -99,7 +103,7 @@ func (fl *File) Read(ctx context.Context, dest []byte, off int64) (fuse.ReadResu
 	fl.logger.Printf("File[%s].Read(len=%d, off=%d)\n", fl.name, len(dest), off)
 
 	// Get content from file
-	err := fl.backend.Read(ctx, dest, int(off))
+	dest, err := fl.backend.Read(ctx, dest, int(off))
 	if err != nil {
 		return nil, chonker.ToSyscallErrno(err,
 			chonker.ToSyscallErrnoOptions{
@@ -170,7 +174,7 @@ func (fl *File) Setattr(ctx context.Context, f fs.FileHandle, in *fuse.SetAttrIn
 	}
 
 	return chonker.ToSyscallErrno(
-		fl.backend.SetAttributes(ctx, in),
+		fl.backend.SetAttributes(ctx, chonker.FileAttributes{}),
 		chonker.ToSyscallErrnoOptions{
 			Logger: fl.logger,
 		})

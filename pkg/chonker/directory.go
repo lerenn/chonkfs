@@ -2,10 +2,14 @@ package chonker
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io"
 	"log"
+	"maps"
+	"slices"
 
-	"github.com/hanwen/go-fuse/v2/fuse"
+	"github.com/lerenn/chonkfs/pkg/storage"
 )
 
 type DirectoryOption func(dir *directory)
@@ -19,37 +23,49 @@ func WithDirectoryLogger(logger *log.Logger) DirectoryOption {
 var _ Directory = (*directory)(nil)
 
 type directory struct {
-	dirs   map[string]*directory
-	files  map[string]*file
-	logger *log.Logger
-	opts   []DirectoryOption
+	storageDir storage.Directory
+	opts       []DirectoryOption
+	logger     *log.Logger
 }
 
-func NewDirectory(opts ...DirectoryOption) *directory {
+func NewDirectory(ctx context.Context, d storage.Directory, opts ...DirectoryOption) (*directory, error) {
 	// Create a default directory
-	d := &directory{
-		dirs:   make(map[string]*directory),
-		files:  make(map[string]*file),
-		logger: log.New(io.Discard, "", 0),
-		opts:   opts,
+	dir := &directory{
+		storageDir: d,
+		opts:       opts,
+		logger:     log.New(io.Discard, "", 0),
 	}
 
 	// Apply options
 	for _, opt := range opts {
-		opt(d)
+		opt(dir)
 	}
 
-	return d
+	return dir, nil
 }
 
-func (dir *directory) checkIfFileOrDirectoryAlreadyExists(name string) error {
+func (dir *directory) GetAttributes(ctx context.Context) (DirectoryAttributes, error) {
+	return DirectoryAttributes{}, nil
+}
+
+func (dir *directory) SetAttributes(ctx context.Context, attr DirectoryAttributes) error {
+	return nil
+}
+
+func (dir *directory) checkIfFileOrDirectoryAlreadyExists(ctx context.Context, name string) error {
 	// Check in directories
-	if _, ok := dir.dirs[name]; ok {
+	_, err := dir.storageDir.GetDirectory(ctx, name)
+	if err != nil && !errors.Is(err, storage.ErrDirectoryNotExists) {
+		return fmt.Errorf("%w: %w", ErrChonker, err)
+	} else if err == nil {
 		return ErrAlreadyExists
 	}
 
 	// Check in files
-	if _, ok := dir.files[name]; ok {
+	_, err = dir.storageDir.GetFile(ctx, name)
+	if err != nil && !errors.Is(err, storage.ErrFileNotExists) {
+		return fmt.Errorf("%w: %w", ErrChonker, err)
+	} else if err == nil {
 		return ErrAlreadyExists
 	}
 
@@ -58,139 +74,117 @@ func (dir *directory) checkIfFileOrDirectoryAlreadyExists(name string) error {
 
 func (dir *directory) CreateDirectory(ctx context.Context, name string) (Directory, error) {
 	// Check if it doesn't not exist already
-	if err := dir.checkIfFileOrDirectoryAlreadyExists(name); err != nil {
+	if err := dir.checkIfFileOrDirectoryAlreadyExists(ctx, name); err != nil {
 		return nil, err
 	}
 
-	// Create a new directory
-	c := NewDirectory(dir.opts...)
-
-	// Add it to childs
-	dir.dirs[name] = c
-
-	return c, nil
-}
-
-func (dir *directory) GetDirectory(ctx context.Context, name string) (Directory, error) {
-	// Check if this is not already a file
-	if _, ok := dir.files[name]; ok {
-		return nil, ErrNotDirectory
+	// Create a new directory on storage
+	nd, err := dir.storageDir.CreateDirectory(ctx, name)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrChonker, err)
 	}
 
-	// Get and check if it exists
-	d, ok := dir.dirs[name]
-	if !ok {
-		return nil, ErrNoEntry
+	// Create a new directory
+	d, err := NewDirectory(ctx, nd, dir.opts...)
+	if err != nil {
+		return nil, err
 	}
 
 	return d, nil
 }
 
-func (dir *directory) GetFile(ctx context.Context, name string) (File, error) {
-	// Get and check if it exists
-	f, ok := dir.files[name]
-	if !ok {
-		return nil, ErrNoEntry
+func (dir *directory) GetDirectory(ctx context.Context, name string) (Directory, error) {
+	// Check if this is not already a file
+	_, err := dir.storageDir.GetFile(ctx, name)
+	if err != nil && !errors.Is(err, storage.ErrFileNotExists) {
+		return nil, fmt.Errorf("%w: %w", ErrChonker, err)
+	} else if err == nil {
+		return nil, ErrNotDirectory
 	}
 
-	return f, nil
+	// Get and check if it exists
+	d, err := dir.storageDir.GetDirectory(ctx, name)
+	if err != nil {
+		if errors.Is(err, storage.ErrDirectoryNotExists) {
+			return nil, ErrNoEntry
+		}
+		return nil, fmt.Errorf("%w: %w", ErrChonker, err)
+	}
+
+	return NewDirectory(ctx, d, dir.opts...)
 }
 
-func (dir *directory) ListEntries(ctx context.Context) ([]fuse.DirEntry, error) {
-	list := make([]fuse.DirEntry, 0, len(dir.dirs)+len(dir.files))
-
-	// Add directories
-	for n := range dir.dirs {
-		list = append(list, fuse.DirEntry{
-			Mode: fuse.S_IFDIR,
-			Name: n,
-			// TODO: add Ino
-		})
+func (dir *directory) GetFile(ctx context.Context, name string) (File, error) {
+	// Get and check if it exists
+	f, err := dir.storageDir.GetFile(ctx, name)
+	if err != nil {
+		if errors.Is(err, storage.ErrFileNotExists) {
+			return nil, ErrNoEntry
+		}
+		return nil, fmt.Errorf("%w: %w", ErrChonker, err)
 	}
 
-	// Add files
-	for n := range dir.files {
-		list = append(list, fuse.DirEntry{
-			Mode: fuse.S_IFREG,
-			Name: n,
-			// TODO: add Ino
-		})
+	// Get file info
+	info, err := f.Info(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrChonker, err)
 	}
 
-	return list, nil
+	return NewFile(ctx, f, info.ChunkSize)
 }
 
 func (dir *directory) CreateFile(ctx context.Context, name string, chunkSize int) (File, error) {
 	// Check if it doesn't not exist already
-	if err := dir.checkIfFileOrDirectoryAlreadyExists(name); err != nil {
+	if err := dir.checkIfFileOrDirectoryAlreadyExists(ctx, name); err != nil {
 		return nil, err
 	}
 
-	// Create file
-	f := newFile(chunkSize,
-		WithFileLogger(dir.logger))
+	// Create file on storage
+	sf, err := dir.storageDir.CreateFile(ctx, name, chunkSize)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrChonker, err)
+	}
 
-	// Add it to children
-	dir.files[name] = f
+	// Create file
+	f, err := NewFile(ctx, sf, chunkSize,
+		WithFileLogger(dir.logger))
+	if err != nil {
+		return nil, err
+	}
 
 	return f, nil
 }
 
 func (dir *directory) RemoveDirectory(ctx context.Context, name string) error {
-	// Check if it exists
-	if _, ok := dir.dirs[name]; !ok {
-		return ErrNoEntry
-	}
-
-	// Remove it from memory
-	delete(dir.dirs, name)
-
-	return nil
+	return dir.storageDir.RemoveDirectory(ctx, name)
 }
 
 func (dir *directory) RemoveFile(ctx context.Context, name string) error {
-	// Check if it exists
-	if _, ok := dir.files[name]; !ok {
-		return ErrNoEntry
-	}
-
-	// Remove it from memory
-	delete(dir.files, name)
-
-	return nil
+	return dir.storageDir.RemoveFile(ctx, name)
 }
 
-func (dir *directory) GetAttributes(ctx context.Context) (fuse.Attr, error) {
-	// TODO
-	return fuse.Attr{}, nil
-}
-
-func (dir *directory) SetAttributes(ctx context.Context, in *fuse.SetAttrIn) error {
-	// TODO
-	return nil
-}
-
-func (dir *directory) RenameEntry(ctx context.Context, name string, newParent Directory, newName string) error {
-	// Get the directory or the file
-	d, dirExist := dir.dirs[name]
-	f, fileExist := dir.files[name]
-
-	// Check if it doesn't not exist already
-	if err := newParent.(*directory).checkIfFileOrDirectoryAlreadyExists(newName); err != nil {
-		return err
+func (dir *directory) ListFiles(ctx context.Context) ([]string, error) {
+	m, err := dir.storageDir.ListFiles(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrChonker, err)
 	}
 
-	// Add it to new parent and remove it from current parent
-	switch {
-	case dirExist:
-		newParent.(*directory).dirs[newName] = d
-		delete(dir.dirs, name)
-	case fileExist:
-		newParent.(*directory).files[newName] = f
-		delete(dir.files, name)
-	default:
-		return ErrNoEntry
+	return slices.Collect(maps.Keys(m)), nil
+}
+
+func (dir *directory) RenameFile(ctx context.Context, name string, newParent Directory, newName string) error {
+	return dir.storageDir.RenameFile(ctx, name, newParent.(*directory).storageDir, newName)
+}
+
+func (dir *directory) ListDirectories(ctx context.Context) ([]string, error) {
+	m, err := dir.storageDir.ListDirectories(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrChonker, err)
 	}
 
-	return nil
+	return slices.Collect(maps.Keys(m)), nil
+}
+
+func (dir *directory) RenameDirectory(ctx context.Context, name string, newParent Directory, newName string) error {
+	return dir.storageDir.RenameDirectory(ctx, name, newParent.(*directory).storageDir, newName)
 }

@@ -7,10 +7,10 @@ import (
 )
 
 var (
-	ErrBackend       = fmt.Errorf("backend error")
-	ErrNotDirectory  = fmt.Errorf("%w: not a directory", ErrBackend)
-	ErrAlreadyExists = fmt.Errorf("%w: already exists", ErrBackend)
-	ErrNoEntry       = fmt.Errorf("%w: no entry", ErrBackend)
+	ErrChonker       = fmt.Errorf("chonker error")
+	ErrNotDirectory  = fmt.Errorf("%w: not a directory", ErrChonker)
+	ErrAlreadyExists = fmt.Errorf("%w: already exists", ErrChonker)
+	ErrNoEntry       = fmt.Errorf("%w: no entry", ErrChonker)
 )
 
 type ToSyscallErrnoOptions struct {
