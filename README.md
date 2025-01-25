@@ -34,3 +34,10 @@ flowchart LR
         end
     end
 ```
+
+## Storage
+
+* Memory (RAM): Implemented
+* Disk: TODO
+* FTP: TODO
+* S3: TODO
