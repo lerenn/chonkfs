@@ -12,9 +12,12 @@ import (
 	"github.com/lerenn/chonkfs/pkg/storage"
 )
 
-type DirectoryOption func(dir *directory)
+type directoryOption func(dir *directory)
 
-func WithDirectoryLogger(logger *log.Logger) DirectoryOption {
+// WithDirectoryLogger is an option to set the logger of a directory.
+//
+//nolint:revive
+func WithDirectoryLogger(logger *log.Logger) directoryOption {
 	return func(dir *directory) {
 		dir.logger = logger
 	}
@@ -24,11 +27,12 @@ var _ Directory = (*directory)(nil)
 
 type directory struct {
 	storageDir storage.Directory
-	opts       []DirectoryOption
+	opts       []directoryOption
 	logger     *log.Logger
 }
 
-func NewDirectory(ctx context.Context, d storage.Directory, opts ...DirectoryOption) (*directory, error) {
+// NewDirectory creates a new directory.
+func NewDirectory(_ context.Context, d storage.Directory, opts ...directoryOption) (Directory, error) {
 	// Create a default directory
 	dir := &directory{
 		storageDir: d,
@@ -44,11 +48,13 @@ func NewDirectory(ctx context.Context, d storage.Directory, opts ...DirectoryOpt
 	return dir, nil
 }
 
-func (dir *directory) GetAttributes(ctx context.Context) (DirectoryAttributes, error) {
+// GetAttributes returns the attributes of the directory.
+func (dir *directory) GetAttributes(_ context.Context) (DirectoryAttributes, error) {
 	return DirectoryAttributes{}, nil
 }
 
-func (dir *directory) SetAttributes(ctx context.Context, attr DirectoryAttributes) error {
+// SetAttributes sets the attributes of the directory.
+func (dir *directory) SetAttributes(_ context.Context, _ DirectoryAttributes) error {
 	return nil
 }
 
@@ -72,6 +78,7 @@ func (dir *directory) checkIfFileOrDirectoryAlreadyExists(ctx context.Context, n
 	return nil
 }
 
+// CreateDirectory creates a child directory to the directory.
 func (dir *directory) CreateDirectory(ctx context.Context, name string) (Directory, error) {
 	// Check if it doesn't not exist already
 	if err := dir.checkIfFileOrDirectoryAlreadyExists(ctx, name); err != nil {
@@ -93,6 +100,7 @@ func (dir *directory) CreateDirectory(ctx context.Context, name string) (Directo
 	return d, nil
 }
 
+// GetDirectory returns a child directory of the directory.
 func (dir *directory) GetDirectory(ctx context.Context, name string) (Directory, error) {
 	// Check if this is not already a file
 	_, err := dir.storageDir.GetFile(ctx, name)
@@ -114,6 +122,7 @@ func (dir *directory) GetDirectory(ctx context.Context, name string) (Directory,
 	return NewDirectory(ctx, d, dir.opts...)
 }
 
+// GetFile returns a child file of the directory.
 func (dir *directory) GetFile(ctx context.Context, name string) (File, error) {
 	// Get and check if it exists
 	f, err := dir.storageDir.GetFile(ctx, name)
@@ -133,6 +142,7 @@ func (dir *directory) GetFile(ctx context.Context, name string) (File, error) {
 	return NewFile(ctx, f, info.ChunkSize)
 }
 
+// CreateFile creates a child file of the directory.
 func (dir *directory) CreateFile(ctx context.Context, name string, chunkSize int) (File, error) {
 	// Check if it doesn't not exist already
 	if err := dir.checkIfFileOrDirectoryAlreadyExists(ctx, name); err != nil {
@@ -155,14 +165,17 @@ func (dir *directory) CreateFile(ctx context.Context, name string, chunkSize int
 	return f, nil
 }
 
+// RemoveDirectory removes a child directory of the directory.
 func (dir *directory) RemoveDirectory(ctx context.Context, name string) error {
 	return dir.storageDir.RemoveDirectory(ctx, name)
 }
 
+// RemoveFile removes a child file of the directory.
 func (dir *directory) RemoveFile(ctx context.Context, name string) error {
 	return dir.storageDir.RemoveFile(ctx, name)
 }
 
+// ListFiles returns the list of files in the directory.
 func (dir *directory) ListFiles(ctx context.Context) ([]string, error) {
 	m, err := dir.storageDir.ListFiles(ctx)
 	if err != nil {
@@ -172,7 +185,14 @@ func (dir *directory) ListFiles(ctx context.Context) ([]string, error) {
 	return slices.Collect(maps.Keys(m)), nil
 }
 
-func (dir *directory) RenameFile(ctx context.Context, name string, newParent Directory, newName string, noReplace bool) error {
+// RenameFile renames a child file of the directory.
+func (dir *directory) RenameFile(
+	ctx context.Context,
+	name string,
+	newParent Directory,
+	newName string,
+	noReplace bool,
+) error {
 	err := dir.storageDir.RenameFile(ctx, name, newParent.(*directory).storageDir, newName, noReplace)
 	switch {
 	case err == nil:
@@ -186,6 +206,7 @@ func (dir *directory) RenameFile(ctx context.Context, name string, newParent Dir
 	}
 }
 
+// ListDirectories returns the list of directories in the directory.
 func (dir *directory) ListDirectories(ctx context.Context) ([]string, error) {
 	m, err := dir.storageDir.ListDirectories(ctx)
 	if err != nil {
@@ -195,7 +216,14 @@ func (dir *directory) ListDirectories(ctx context.Context) ([]string, error) {
 	return slices.Collect(maps.Keys(m)), nil
 }
 
-func (dir *directory) RenameDirectory(ctx context.Context, name string, newParent Directory, newName string, noReplace bool) error {
+// RenameDirectory renames a child directory of the directory.
+func (dir *directory) RenameDirectory(
+	ctx context.Context,
+	name string,
+	newParent Directory,
+	newName string,
+	noReplace bool,
+) error {
 	err := dir.storageDir.RenameDirectory(ctx, name, newParent.(*directory).storageDir, newName, noReplace)
 	switch {
 	case err == nil:

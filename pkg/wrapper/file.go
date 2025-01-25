@@ -11,27 +11,36 @@ import (
 	"github.com/lerenn/chonkfs/pkg/chonker"
 )
 
-type FileOption func(fl *File)
+type fileOption func(fl *File)
 
-func WithFileLogger(logger *log.Logger) FileOption {
+// WithFileLogger is an option to set the logger of a file.
+//
+//nolint:revive
+func WithFileLogger(logger *log.Logger) fileOption {
 	return func(fl *File) {
 		fl.logger = logger
 	}
 }
 
-func WithFileChunkSize(chunkSize int) FileOption {
+// WithFileChunkSize is an option to set the chunk size of a file.
+//
+//nolint:revive
+func WithFileChunkSize(chunkSize int) fileOption {
 	return func(fl *File) {
 		fl.chunkSize = chunkSize
 	}
 }
 
-func WithFileName(name string) FileOption {
+// WithFileName is an option to set the name of a file.
+//
+//nolint:revive
+func WithFileName(name string) fileOption {
 	return func(fl *File) {
 		fl.name = name
 	}
 }
 
-// Capabilities that the file struct should implements
+// Capabilities that the file struct should implements.
 var (
 	_ fs.FileFlusher   = (*File)(nil)
 	_ fs.FileGetattrer = (*File)(nil)
@@ -46,8 +55,10 @@ var (
 	_ fs.NodeSetattrer = (*File)(nil)
 )
 
-const fileMode = syscall.S_IFREG | syscall.S_IRWXU | syscall.S_IRGRP | syscall.S_IXGRP | syscall.S_IROTH | syscall.S_IXOTH
+const fileMode = syscall.S_IFREG | syscall.S_IRWXU | syscall.S_IRGRP |
+	syscall.S_IXGRP | syscall.S_IROTH | syscall.S_IXOTH
 
+// File is a representation of a FUSE file as wrapper of chonker.
 type File struct {
 	fs.Inode
 
@@ -56,13 +67,14 @@ type File struct {
 
 	// Optional
 
-	options   []FileOption
+	options   []fileOption
 	logger    *log.Logger
 	name      string
 	chunkSize int
 }
 
-func NewFile(backend chonker.File, options ...FileOption) *File {
+// NewFile creates a new file.
+func NewFile(backend chonker.File, options ...fileOption) *File {
 	// Create default file
 	f := &File{
 		backend:   backend,
@@ -80,6 +92,7 @@ func NewFile(backend chonker.File, options ...FileOption) *File {
 	return f
 }
 
+// Getattr returns the attributes of the file to the FUSE system.
 func (fl *File) Getattr(ctx context.Context, out *fuse.AttrOut) (errno syscall.Errno) {
 	fl.logger.Printf("File[%s].Getattr(...)\n", fl.name)
 
@@ -101,7 +114,8 @@ func (fl *File) Getattr(ctx context.Context, out *fuse.AttrOut) (errno syscall.E
 	return fs.OK
 }
 
-func (fl *File) Statx(ctx context.Context, flags uint32, mask uint32, out *fuse.StatxOut) syscall.Errno {
+// Statx returns the attributes of the file to the FUSE system.
+func (fl *File) Statx(ctx context.Context, _ uint32, _ uint32, out *fuse.StatxOut) syscall.Errno {
 	fl.logger.Printf("File[%s].Statx(...)\n", fl.name)
 
 	// Get attributes from backend
@@ -122,6 +136,7 @@ func (fl *File) Statx(ctx context.Context, flags uint32, mask uint32, out *fuse.
 	return fs.OK
 }
 
+// Read reads the file for the FUSE system.
 func (fl *File) Read(ctx context.Context, dest []byte, off int64) (fuse.ReadResult, syscall.Errno) {
 	fl.logger.Printf("File[%s].Read(len=%d, off=%d)\n", fl.name, len(dest), off)
 
@@ -137,7 +152,8 @@ func (fl *File) Read(ctx context.Context, dest []byte, off int64) (fuse.ReadResu
 	return fuse.ReadResultData(dest), fs.OK
 }
 
-func (fl *File) Open(ctx context.Context, flags uint32) (fh fs.FileHandle, fuseFlags uint32, errno syscall.Errno) {
+// Open opens the file for the FUSE system.
+func (fl *File) Open(_ context.Context, flags uint32) (fh fs.FileHandle, fuseFlags uint32, errno syscall.Errno) {
 	fl.logger.Printf("File[%s].Open(...)\n", fl.name)
 
 	// Save flags
@@ -149,6 +165,7 @@ func (fl *File) Open(ctx context.Context, flags uint32) (fh fs.FileHandle, fuseF
 	return fl, fuse.FOPEN_DIRECT_IO, fs.OK
 }
 
+// Write writes the file for the FUSE system.
 func (fl *File) Write(ctx context.Context, data []byte, off int64) (written uint32, errno syscall.Errno) {
 	fl.logger.Printf("File[%s].Write(len=%d, off=%d)\n", fl.name, len(data), off)
 
@@ -163,7 +180,8 @@ func (fl *File) Write(ctx context.Context, data []byte, off int64) (written uint
 		})
 }
 
-func (fl *File) Fsync(ctx context.Context, flags uint32) syscall.Errno {
+// Fsync flushes the file for the FUSE system.
+func (fl *File) Fsync(ctx context.Context, _ uint32) syscall.Errno {
 	fl.logger.Printf("File[%s].Fsync(...)\n", fl.name)
 
 	// Sync cache on backend with underlying support
@@ -174,7 +192,8 @@ func (fl *File) Fsync(ctx context.Context, flags uint32) syscall.Errno {
 		})
 }
 
-func (fl *File) Setattr(ctx context.Context, f fs.FileHandle, in *fuse.SetAttrIn, out *fuse.AttrOut) syscall.Errno {
+// Setattr sets the attributes of the file for the FUSE system.
+func (fl *File) Setattr(ctx context.Context, _ fs.FileHandle, in *fuse.SetAttrIn, out *fuse.AttrOut) syscall.Errno {
 	fl.logger.Printf("File[%s].Setattr(in=%+v, out=%+v)\n", fl.name, *in, *out)
 
 	// Get actual size
@@ -203,6 +222,7 @@ func (fl *File) Setattr(ctx context.Context, f fs.FileHandle, in *fuse.SetAttrIn
 		})
 }
 
+// Flush flushes the file for the FUSE system.
 func (fl *File) Flush(ctx context.Context) syscall.Errno {
 	fl.logger.Printf("File[%s].Flush(...)\n", fl.name)
 

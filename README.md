@@ -15,6 +15,7 @@ Made for protocols such as torrent based systems.
 <i>Just like this file-system.</i>
 </p>
 
+*Based on the incredible [go-fuse](https://github.com/hanwen/go-fuse) library.*
 
 ## Architecture
 

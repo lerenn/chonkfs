@@ -10,11 +10,13 @@ import (
 
 var _ storage.Directory = (*Directory)(nil)
 
+// Directory is a directory in memory.
 type Directory struct {
 	directories map[string]*Directory
 	files       map[string]*File
 }
 
+// NewDirectory creates a new directory.
 func NewDirectory() *Directory {
 	return &Directory{
 		directories: make(map[string]*Directory),
@@ -22,7 +24,8 @@ func NewDirectory() *Directory {
 	}
 }
 
-func (d *Directory) CreateDirectory(ctx context.Context, name string) (storage.Directory, error) {
+// CreateDirectory creates a directory.
+func (d *Directory) CreateDirectory(_ context.Context, name string) (storage.Directory, error) {
 	if _, exist := d.directories[name]; exist {
 		return nil, storage.ErrDirectoryAlreadyExists
 	}
@@ -32,11 +35,13 @@ func (d *Directory) CreateDirectory(ctx context.Context, name string) (storage.D
 	return nd, nil
 }
 
-func (d *Directory) Info(ctx context.Context) (storage.DirectoryInfo, error) {
+// Info returns the directory info.
+func (d *Directory) Info(_ context.Context) (storage.DirectoryInfo, error) {
 	return storage.DirectoryInfo{}, nil
 }
 
-func (d *Directory) ListFiles(ctx context.Context) (map[string]storage.File, error) {
+// ListFiles returns a map of files.
+func (d *Directory) ListFiles(_ context.Context) (map[string]storage.File, error) {
 	m := make(map[string]storage.File, len(d.files))
 	for p, f := range d.files {
 		m[p] = f
@@ -44,7 +49,8 @@ func (d *Directory) ListFiles(ctx context.Context) (map[string]storage.File, err
 	return m, nil
 }
 
-func (d *Directory) GetDirectory(ctx context.Context, name string) (storage.Directory, error) {
+// GetDirectory returns a child directory.
+func (d *Directory) GetDirectory(_ context.Context, name string) (storage.Directory, error) {
 	dir, ok := d.directories[name]
 	if !ok {
 		return nil, storage.ErrDirectoryNotExists
@@ -52,7 +58,8 @@ func (d *Directory) GetDirectory(ctx context.Context, name string) (storage.Dire
 	return dir, nil
 }
 
-func (d *Directory) GetFile(ctx context.Context, name string) (storage.File, error) {
+// GetFile returns a child file.
+func (d *Directory) GetFile(_ context.Context, name string) (storage.File, error) {
 	f, ok := d.files[name]
 	if !ok {
 		return nil, storage.ErrFileNotExists
@@ -60,7 +67,8 @@ func (d *Directory) GetFile(ctx context.Context, name string) (storage.File, err
 	return f, nil
 }
 
-func (d *Directory) ListDirectories(ctx context.Context) (map[string]storage.Directory, error) {
+// ListDirectories returns a map of directories.
+func (d *Directory) ListDirectories(_ context.Context) (map[string]storage.Directory, error) {
 	m := make(map[string]storage.Directory, len(d.directories))
 	for p, dir := range d.directories {
 		m[p] = dir
@@ -68,7 +76,8 @@ func (d *Directory) ListDirectories(ctx context.Context) (map[string]storage.Dir
 	return m, nil
 }
 
-func (d *Directory) CreateFile(ctx context.Context, name string, chunkSize int) (storage.File, error) {
+// CreateFile creates a file in the directory.
+func (d *Directory) CreateFile(_ context.Context, name string, chunkSize int) (storage.File, error) {
 	if _, exist := d.files[name]; exist {
 		return nil, fmt.Errorf("couldn't create file %q: %w", name, storage.ErrFileAlreadyExists)
 	}
@@ -78,7 +87,8 @@ func (d *Directory) CreateFile(ctx context.Context, name string, chunkSize int) 
 	return f, nil
 }
 
-func (d *Directory) RemoveDirectory(ctx context.Context, name string) error {
+// RemoveDirectory removes a child directory of the directory.
+func (d *Directory) RemoveDirectory(_ context.Context, name string) error {
 	if _, exist := d.directories[name]; !exist {
 		return storage.ErrDirectoryNotExists
 	}
@@ -86,7 +96,8 @@ func (d *Directory) RemoveDirectory(ctx context.Context, name string) error {
 	return nil
 }
 
-func (d *Directory) RemoveFile(ctx context.Context, name string) error {
+// RemoveFile removes a child file of the directory.
+func (d *Directory) RemoveFile(_ context.Context, name string) error {
 	if _, exist := d.files[name]; !exist {
 		return storage.ErrFileNotExists
 	}
@@ -104,7 +115,14 @@ func (d *Directory) checkIfFileOrDirectoryAlreadyExists(name string) error {
 	return nil
 }
 
-func (d *Directory) RenameFile(ctx context.Context, name string, newParent storage.Directory, newName string, noReplace bool) error {
+// RenameFile renames a child file of the directory.
+func (d *Directory) RenameFile(
+	_ context.Context,
+	name string,
+	newParent storage.Directory,
+	newName string,
+	noReplace bool,
+) error {
 	// Get the directory or the file
 	f, fileExist := d.files[name]
 	if !fileExist {
@@ -116,7 +134,7 @@ func (d *Directory) RenameFile(ctx context.Context, name string, newParent stora
 		if errors.Is(err, storage.ErrFileAlreadyExists) && noReplace {
 			// If noReplace is set and the file already exists, return error
 			return err
-		} else {
+		} else if !errors.Is(err, storage.ErrFileAlreadyExists) {
 			// If another error, then return
 			return err
 		}
@@ -129,7 +147,14 @@ func (d *Directory) RenameFile(ctx context.Context, name string, newParent stora
 	return nil
 }
 
-func (d *Directory) RenameDirectory(ctx context.Context, name string, newParent storage.Directory, newName string, noReplace bool) error {
+// RenameDirectory renames a child directory of the directory.
+func (d *Directory) RenameDirectory(
+	_ context.Context,
+	name string,
+	newParent storage.Directory,
+	newName string,
+	noReplace bool,
+) error {
 	// Get the directory or the file
 	dir, dirExist := d.directories[name]
 	if !dirExist {
@@ -141,7 +166,7 @@ func (d *Directory) RenameDirectory(ctx context.Context, name string, newParent 
 		if errors.Is(err, storage.ErrDirectoryAlreadyExists) && noReplace {
 			// If noReplace is set and the file already exists, return error
 			return err
-		} else {
+		} else if !errors.Is(err, storage.ErrDirectoryAlreadyExists) {
 			// If another error, then return
 			return err
 		}

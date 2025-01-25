@@ -10,12 +10,12 @@ import (
 )
 
 // NodeImplementer is a struct that implements every callback for node
-// from github.com/hanwen/go-fuse/v2/fs. It should returns an error if the function
-// is called and should be implemented. It is used to check if some non implemented
+// from github.com/hanwen/go-fuse/v2/fs. It should returns an error i_ the function
+// is called and should be implemented. It is used to check i_ some non implemented
 // calls are called.
 type NodeImplementer struct{}
 
-// Capabilities that the FSImplementer struct should implements
+// Capabilities that the FSImplementer struct should implements.
 var (
 	_ fs.NodeAccesser       = (*NodeImplementer)(nil)
 	_ fs.NodeAllocater      = (*NodeImplementer)(nil)
@@ -53,7 +53,8 @@ var (
 	_ fs.NodeWriter         = (*NodeImplementer)(nil)
 )
 
-func (ni NodeImplementer) Detector(skippable bool, format string, args ...interface{}) {
+//nolint:unparam
+func (ni NodeImplementer) detectorf(skippable bool, format string, args ...interface{}) {
 	if skippable {
 		fmt.Printf("SKIPPABLE: NodeImplementer."+format+"\n", args...)
 	} else {
@@ -61,198 +62,301 @@ func (ni NodeImplementer) Detector(skippable bool, format string, args ...interf
 	}
 }
 
-func (ni NodeImplementer) Access(ctx context.Context, mask uint32) syscall.Errno {
-	ni.Detector(true, "Access")
-	return fs.OK // OK if is not implemented
+// Access is a callback of the node.
+func (ni NodeImplementer) Access(_ context.Context, _ uint32) syscall.Errno {
+	ni.detectorf(true, "Access")
+	return fs.OK // OK i_ is not implemented
 }
 
-func (ni NodeImplementer) Allocate(ctx context.Context, f fs.FileHandle, off uint64, size uint64, mode uint32) syscall.Errno {
-	ni.Detector(false, "Allocate")
+// Allocate is a callback of the node.
+func (ni NodeImplementer) Allocate(
+	_ context.Context,
+	_ fs.FileHandle,
+	_ uint64,
+	_ uint64,
+	_ uint32,
+) syscall.Errno {
+	ni.detectorf(false, "Allocate")
 	return syscall.EOPNOTSUPP
 }
 
+// CopyFileRange is a callback of the node.
 func (ni NodeImplementer) CopyFileRange(
-	ctx context.Context,
-	fhIn fs.FileHandle,
-	offIn uint64,
-	out *fs.Inode,
-	fhOut fs.FileHandle,
-	offOut uint64,
-	len uint64,
-	flags uint64,
+	_ context.Context,
+	_ fs.FileHandle,
+	_ uint64,
+	_ *fs.Inode,
+	_ fs.FileHandle,
+	_ uint64,
+	_ uint64,
+	_ uint64,
 ) (uint32, syscall.Errno) {
-	ni.Detector(false, "CopyFileRange")
+	ni.detectorf(false, "CopyFileRange")
 	return 0, syscall.EOPNOTSUPP
 }
 
-func (ni NodeImplementer) Read(ctx context.Context, f fs.FileHandle, dest []byte, off int64) (fuse.ReadResult, syscall.Errno) {
-	ni.Detector(false, "Read")
+// Read is a callback of the node.
+func (ni NodeImplementer) Read(
+	_ context.Context,
+	_ fs.FileHandle,
+	_ []byte,
+	_ int64,
+) (fuse.ReadResult, syscall.Errno) {
+	ni.detectorf(false, "Read")
 	return nil, syscall.EOPNOTSUPP
 }
 
+// Link is a callback of the node.
 func (ni NodeImplementer) Link(
-	ctx context.Context,
-	target fs.InodeEmbedder,
-	ame string,
-	out *fuse.EntryOut,
-) (node *fs.Inode, errno syscall.Errno) {
-	ni.Detector(false, "Link")
-	return nil, syscall.EOPNOTSUPP
-}
-
-func (ni NodeImplementer) Flush(ctx context.Context, f fs.FileHandle) syscall.Errno {
-	ni.Detector(true, "Flush")
-	return fs.OK // OK if not implemented
-}
-
-func (ni NodeImplementer) Fsync(ctx context.Context, f fs.FileHandle, flags uint32) syscall.Errno {
-	ni.Detector(false, "Fsync")
-	return syscall.EOPNOTSUPP
-}
-
-func (ni NodeImplementer) Getattr(ctx context.Context, f fs.FileHandle, out *fuse.AttrOut) syscall.Errno {
-	ni.Detector(false, "Getattr")
-	return syscall.EOPNOTSUPP
-}
-
-func (ni NodeImplementer) Getxattr(ctx context.Context, attr string, dest []byte) (uint32, syscall.Errno) {
-	ni.Detector(true, "Getxattr")
-	return 0, syscall.EOPNOTSUPP
-}
-
-func (ni NodeImplementer) Statfs(ctx context.Context, out *fuse.StatfsOut) syscall.Errno {
-	ni.Detector(false, "Statfs")
-	return syscall.EOPNOTSUPP
-}
-
-func (ni NodeImplementer) Listxattr(ctx context.Context, dest []byte) (uint32, syscall.Errno) {
-	ni.Detector(false, "Listxattr")
-	return 0, syscall.EOPNOTSUPP
-}
-
-func (ni NodeImplementer) Lseek(ctx context.Context, f fs.FileHandle, Off uint64, whence uint32) (uint64, syscall.Errno) {
-	ni.Detector(false, "Lseek")
-	return 0, syscall.EOPNOTSUPP
-}
-
-func (ni NodeImplementer) Lookup(ctx context.Context, name string, out *fuse.EntryOut) (*fs.Inode, syscall.Errno) {
-	ni.Detector(false, "Lookup")
-	return nil, syscall.EOPNOTSUPP
-}
-
-func (ni NodeImplementer) Getlk(ctx context.Context, f fs.FileHandle, owner uint64, lk *fuse.FileLock, flags uint32, out *fuse.FileLock) syscall.Errno {
-	ni.Detector(false, "Getlk")
-	return syscall.EOPNOTSUPP
-}
-
-func (ni NodeImplementer) Mknod(
-	ctx context.Context,
-	name string,
-	mode uint32,
-	dev uint32,
-	out *fuse.EntryOut,
+	_ context.Context,
+	_ fs.InodeEmbedder,
+	_ string,
+	_ *fuse.EntryOut,
 ) (*fs.Inode, syscall.Errno) {
-	ni.Detector(false, "Mknod")
+	ni.detectorf(false, "Link")
 	return nil, syscall.EOPNOTSUPP
 }
 
-func (ni NodeImplementer) Readdir(ctx context.Context) (fs.DirStream, syscall.Errno) {
-	ni.Detector(false, "Readdir")
+// Flush is a callback of the node.
+func (ni NodeImplementer) Flush(_ context.Context, _ fs.FileHandle) syscall.Errno {
+	ni.detectorf(true, "Flush")
+	return fs.OK // OK i_ not implemented
+}
+
+// Fsync is a callback of the node.
+func (ni NodeImplementer) Fsync(_ context.Context, _ fs.FileHandle, _ uint32) syscall.Errno {
+	ni.detectorf(false, "Fsync")
+	return syscall.EOPNOTSUPP
+}
+
+// Getattr is a callback of the node.
+func (ni NodeImplementer) Getattr(_ context.Context, _ fs.FileHandle, _ *fuse.AttrOut) syscall.Errno {
+	ni.detectorf(false, "Getattr")
+	return syscall.EOPNOTSUPP
+}
+
+// Getxattr is a callback of the node.
+func (ni NodeImplementer) Getxattr(_ context.Context, _ string, _ []byte) (uint32, syscall.Errno) {
+	ni.detectorf(true, "Getxattr")
+	return 0, syscall.EOPNOTSUPP
+}
+
+// Statfs is a callback of the node.
+func (ni NodeImplementer) Statfs(_ context.Context, _ *fuse.StatfsOut) syscall.Errno {
+	ni.detectorf(false, "Statfs")
+	return syscall.EOPNOTSUPP
+}
+
+// Listxattr is a callback of the node.
+func (ni NodeImplementer) Listxattr(_ context.Context, _ []byte) (uint32, syscall.Errno) {
+	ni.detectorf(false, "Listxattr")
+	return 0, syscall.EOPNOTSUPP
+}
+
+// Lseek is a callback of the node.
+func (ni NodeImplementer) Lseek(
+	_ context.Context,
+	_ fs.FileHandle,
+	_ uint64,
+	_ uint32,
+) (uint64, syscall.Errno) {
+	ni.detectorf(false, "Lseek")
+	return 0, syscall.EOPNOTSUPP
+}
+
+// Lookup is a callback of the node.
+func (ni NodeImplementer) Lookup(_ context.Context, _ string, _ *fuse.EntryOut) (*fs.Inode, syscall.Errno) {
+	ni.detectorf(false, "Lookup")
 	return nil, syscall.EOPNOTSUPP
 }
 
-func (ni NodeImplementer) Mkdir(ctx context.Context, name string, mode uint32, out *fuse.EntryOut) (*fs.Inode, syscall.Errno) {
-	ni.Detector(false, "Mkdir")
+// Getlk is a callback of the node.
+func (ni NodeImplementer) Getlk(
+	_ context.Context,
+	_ fs.FileHandle,
+	_ uint64,
+	_ *fuse.FileLock,
+	_ uint32,
+	_ *fuse.FileLock,
+) syscall.Errno {
+	ni.detectorf(false, "Getlk")
+	return syscall.EOPNOTSUPP
+}
+
+// Mknod is a callback of the node.
+func (ni NodeImplementer) Mknod(
+	_ context.Context,
+	_ string,
+	_ uint32,
+	_ uint32,
+	_ *fuse.EntryOut,
+) (*fs.Inode, syscall.Errno) {
+	ni.detectorf(false, "Mknod")
 	return nil, syscall.EOPNOTSUPP
 }
 
+// Readdir is a callback of the node.
+func (ni NodeImplementer) Readdir(_ context.Context) (fs.DirStream, syscall.Errno) {
+	ni.detectorf(false, "Readdir")
+	return nil, syscall.EOPNOTSUPP
+}
+
+// Mkdir is a callback of the node.
+func (ni NodeImplementer) Mkdir(
+	_ context.Context,
+	_ string,
+	_ uint32,
+	_ *fuse.EntryOut,
+) (*fs.Inode, syscall.Errno) {
+	ni.detectorf(false, "Mkdir")
+	return nil, syscall.EOPNOTSUPP
+}
+
+// Create is a callback of the node.
 func (ni NodeImplementer) Create(
-	ctx context.Context,
-	name string,
-	flags uint32,
-	mode uint32,
-	out *fuse.EntryOut,
-) (node *fs.Inode, fh fs.FileHandle, fuseFlags uint32, errno syscall.Errno) {
-	ni.Detector(false, "Create")
+	_ context.Context,
+	_ string,
+	_ uint32,
+	_ uint32,
+	_ *fuse.EntryOut,
+) (*fs.Inode, fs.FileHandle, uint32, syscall.Errno) {
+	ni.detectorf(false, "Create")
 	return nil, nil, 0, syscall.EOPNOTSUPP
 }
 
-func (ni NodeImplementer) Setxattr(ctx context.Context, attr string, data []byte, flags uint32) syscall.Errno {
-	ni.Detector(false, "Setxattr")
+// Setxattr is a callback of the node.
+func (ni NodeImplementer) Setxattr(_ context.Context, _ string, _ []byte, _ uint32) syscall.Errno {
+	ni.detectorf(false, "Setxattr")
 	return syscall.EOPNOTSUPP
 }
 
-func (ni NodeImplementer) Unlink(ctx context.Context, name string) syscall.Errno {
-	ni.Detector(false, "Unlink")
+// Unlink is a callback of the node.
+func (ni NodeImplementer) Unlink(_ context.Context, _ string) syscall.Errno {
+	ni.detectorf(false, "Unlink")
 	return syscall.EOPNOTSUPP
 }
 
-func (ni NodeImplementer) Rmdir(ctx context.Context, name string) syscall.Errno {
-	ni.Detector(false, "Rmdir")
+// Rmdir is a callback of the node.
+func (ni NodeImplementer) Rmdir(_ context.Context, _ string) syscall.Errno {
+	ni.detectorf(false, "Rmdir")
 	return syscall.EOPNOTSUPP
 }
 
-func (ni NodeImplementer) Rename(ctx context.Context, name string, newParent fs.InodeEmbedder, newName string, flags uint32) syscall.Errno {
-	ni.Detector(false, "Rename")
+// Rename is a callback of the node.
+func (ni NodeImplementer) Rename(
+	_ context.Context,
+	_ string,
+	_ fs.InodeEmbedder,
+	_ string,
+	_ uint32,
+) syscall.Errno {
+	ni.detectorf(false, "Rename")
 	return syscall.EOPNOTSUPP
 }
 
-func (ni NodeImplementer) Open(ctx context.Context, flags uint32) (fs.FileHandle, uint32, syscall.Errno) {
-	ni.Detector(false, "Open")
+// Open is a callback of the node.
+func (ni NodeImplementer) Open(_ context.Context, _ uint32) (fs.FileHandle, uint32, syscall.Errno) {
+	ni.detectorf(false, "Open")
 	return nil, 0, syscall.EOPNOTSUPP
 }
 
-func (ni NodeImplementer) OpendirHandle(ctx context.Context, flags uint32) (fh fs.FileHandle, fuseFlags uint32, errno syscall.Errno) {
-	ni.Detector(true, "OpendirHandle")
+// OpendirHandle is a callback of the node.
+func (ni NodeImplementer) OpendirHandle(
+	_ context.Context,
+	_ uint32,
+) (fs.FileHandle, uint32, syscall.Errno) {
+	ni.detectorf(true, "OpendirHandle")
 	return nil, 0, fs.OK
 }
 
-func (ni NodeImplementer) Opendir(ctx context.Context) syscall.Errno {
-	ni.Detector(true, "Opendir")
+// Opendir is a callback of the node.
+func (ni NodeImplementer) Opendir(_ context.Context) syscall.Errno {
+	ni.detectorf(true, "Opendir")
 	return fs.OK
 }
 
-func (ni NodeImplementer) Setattr(ctx context.Context, f fs.FileHandle, in *fuse.SetAttrIn, out *fuse.AttrOut) syscall.Errno {
-	ni.Detector(false, "Setattr")
+// Setattr is a callback of the node.
+func (ni NodeImplementer) Setattr(
+	_ context.Context,
+	_ fs.FileHandle,
+	_ *fuse.SetAttrIn,
+	_ *fuse.AttrOut,
+) syscall.Errno {
+	ni.detectorf(false, "Setattr")
 	return syscall.EOPNOTSUPP
 }
 
-func (ni NodeImplementer) Readlink(ctx context.Context) ([]byte, syscall.Errno) {
-	ni.Detector(false, "Readlink")
+// Readlink is a callback of the node.
+func (ni NodeImplementer) Readlink(_ context.Context) ([]byte, syscall.Errno) {
+	ni.detectorf(false, "Readlink")
 	return nil, syscall.EOPNOTSUPP
 }
 
-func (ni NodeImplementer) Release(ctx context.Context, f fs.FileHandle) syscall.Errno {
-	ni.Detector(true, "Release")
+// Release is a callback of the node.
+func (ni NodeImplementer) Release(_ context.Context, _ fs.FileHandle) syscall.Errno {
+	ni.detectorf(true, "Release")
 	return syscall.EOPNOTSUPP
 }
 
-func (ni NodeImplementer) Removexattr(ctx context.Context, attr string) syscall.Errno {
-	ni.Detector(false, "Removexattr")
+// Removexattr is a callback of the node.
+func (ni NodeImplementer) Removexattr(_ context.Context, _ string) syscall.Errno {
+	ni.detectorf(false, "Removexattr")
 	return syscall.EOPNOTSUPP
 }
 
-func (ni NodeImplementer) Setlk(ctx context.Context, f fs.FileHandle, owner uint64, lk *fuse.FileLock, flags uint32) syscall.Errno {
-	ni.Detector(false, "Setlk")
+// Setlk is a callback of the node.
+func (ni NodeImplementer) Setlk(
+	_ context.Context,
+	_ fs.FileHandle,
+	_ uint64,
+	_ *fuse.FileLock,
+	_ uint32,
+) syscall.Errno {
+	ni.detectorf(false, "Setlk")
 	return syscall.EOPNOTSUPP
 }
 
-func (ni NodeImplementer) Setlkw(ctx context.Context, f fs.FileHandle, owner uint64, lk *fuse.FileLock, flags uint32) syscall.Errno {
-	ni.Detector(false, "Setlkw")
+// Setlkw is a callback of the node.
+func (ni NodeImplementer) Setlkw(
+	_ context.Context,
+	_ fs.FileHandle,
+	_ uint64,
+	_ *fuse.FileLock,
+	_ uint32,
+) syscall.Errno {
+	ni.detectorf(false, "Setlkw")
 	return syscall.EOPNOTSUPP
 }
 
-func (ni NodeImplementer) Statx(ctx context.Context, f fs.FileHandle, flags uint32, mask uint32, out *fuse.StatxOut) syscall.Errno {
-	ni.Detector(false, "Statx")
+// Statx is a callback of the node.
+func (ni NodeImplementer) Statx(
+	_ context.Context,
+	_ fs.FileHandle,
+	_ uint32,
+	_ uint32,
+	_ *fuse.StatxOut,
+) syscall.Errno {
+	ni.detectorf(false, "Statx")
 	return syscall.EOPNOTSUPP
 }
 
-func (ni NodeImplementer) Symlink(ctx context.Context, target, name string, out *fuse.EntryOut) (node *fs.Inode, errno syscall.Errno) {
-	ni.Detector(false, "Symlink")
+// Symlink is a callback of the node.
+func (ni NodeImplementer) Symlink(
+	_ context.Context,
+	_, _ string,
+	_ *fuse.EntryOut,
+) (*fs.Inode, syscall.Errno) {
+	ni.detectorf(false, "Symlink")
 	return nil, syscall.EOPNOTSUPP
 }
 
-func (ni NodeImplementer) Write(ctx context.Context, f fs.FileHandle, data []byte, off int64) (written uint32, errno syscall.Errno) {
-	ni.Detector(false, "Write")
+// Write is a callback of the node.
+func (ni NodeImplementer) Write(
+	_ context.Context,
+	_ fs.FileHandle,
+	_ []byte,
+	_ int64,
+) (uint32, syscall.Errno) {
+	ni.detectorf(false, "Write")
 	return 0, syscall.EOPNOTSUPP
 }

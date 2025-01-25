@@ -5,6 +5,7 @@ import (
 	"os"
 )
 
+// DebugOpenFlags prints the open flags on the logger.
 func DebugOpenFlags(logger *log.Logger, flags uint32) {
 	if flags&uint32(os.O_RDONLY) != 0 {
 		logger.Println("O_RDONLY")

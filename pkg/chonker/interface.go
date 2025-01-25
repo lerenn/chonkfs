@@ -4,6 +4,7 @@ import (
 	"context"
 )
 
+// Directory is the structure of chonker regrouping the files.
 type Directory interface {
 	// Attributes (optional)
 
@@ -27,6 +28,7 @@ type Directory interface {
 	RenameFile(ctx context.Context, name string, newParent Directory, newName string, noReplace bool) error
 }
 
+// File is the structure of chonker making the link between a file and its chunks.
 type File interface {
 	// Attributes (optional)
 
@@ -42,13 +44,16 @@ type File interface {
 	Write(ctx context.Context, data []byte, off int, opts WriteOptions) (written int, errno error)
 }
 
+// DirectoryAttributes contains the directory attributes.
 type DirectoryAttributes struct {
 }
 
+// FileAttributes contains the file attributes.
 type FileAttributes struct {
 	Size int
 }
 
+// WriteOptions represents the options usable for writing.
 type WriteOptions struct {
 	Truncate bool
 	Append   bool

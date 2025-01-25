@@ -10,9 +10,12 @@ import (
 
 var _ File = (*file)(nil)
 
-type FileOption func(fl *file)
+type fileOption func(fl *file)
 
-func WithFileLogger(logger *log.Logger) FileOption {
+// WithFileLogger is an option to set the logger of a file.
+//
+//nolint:revive
+func WithFileLogger(logger *log.Logger) fileOption {
 	return func(fl *file) {
 		fl.logger = logger
 	}
@@ -20,18 +23,18 @@ func WithFileLogger(logger *log.Logger) FileOption {
 
 type file struct {
 	storageFile storage.File
-	path        string
 	chunkSize   int
 
-	opts   []FileOption
+	opts   []fileOption
 	logger *log.Logger
 }
 
+// NewFile creates a new file.
 func NewFile(
-	ctx context.Context,
+	_ context.Context,
 	s storage.File,
 	chunkSize int,
-	opts ...FileOption,
+	opts ...fileOption,
 ) (File, error) {
 	// Create a default file
 	f := &file{
@@ -49,6 +52,7 @@ func NewFile(
 	return f, nil
 }
 
+// GetAttributes returns the attributes of the file.
 func (f *file) GetAttributes(ctx context.Context) (FileAttributes, error) {
 	size, err := f.Size(ctx)
 	if err != nil {
@@ -60,16 +64,22 @@ func (f *file) GetAttributes(ctx context.Context) (FileAttributes, error) {
 	}, nil
 }
 
-func (f *file) SetAttributes(ctx context.Context, attr FileAttributes) error {
+// SetAttributes sets the attributes of the file.
+func (f *file) SetAttributes(_ context.Context, _ FileAttributes) error {
 	// Nothing to do (yet)
 	return nil
 }
 
+// Read reads the file at the given offset.
 func (f *file) Read(ctx context.Context, dest []byte, off int) ([]byte, error) {
 	return f.readAccrossChunks(ctx, dest, off)
 }
 
+// TODO: Refactor this function
+//
+//nolint:cyclop
 func (f *file) readAccrossChunks(ctx context.Context, dest []byte, off int) ([]byte, error) {
+	// Get the total number of chunks
 	totalChunk, err := f.storageFile.ChunksCount(ctx)
 	if err != nil {
 		return nil, err
@@ -90,7 +100,7 @@ func (f *file) readAccrossChunks(ctx context.Context, dest []byte, off int) ([]b
 		}
 	}
 
-	// Loop accross chunks
+	// Loop across chunks
 	read := 0
 	for ; read < len(dest) && chunkNb < totalChunk; chunkNb++ {
 		if read == 0 {
@@ -116,6 +126,7 @@ func (f *file) readAccrossChunks(ctx context.Context, dest []byte, off int) ([]b
 	return dest, nil
 }
 
+// Write writes the data at the given offset.
 func (f *file) Write(ctx context.Context, data []byte, off int, opts WriteOptions) (written int, err error) {
 	// Check if there is enough space, and allocate what's missing
 	if err := f.resizeChunks(ctx, off+len(data)); err != nil {
@@ -128,19 +139,19 @@ func (f *file) Write(ctx context.Context, data []byte, off int, opts WriteOption
 			return 0, err
 		}
 
-		written = len(data)
-	} else {
-		// Write the data
-		written, err = f.writeAccrossChunks(ctx, data, off)
-		if err != nil {
-			return 0, err
-		}
+		return len(data), nil
+	}
 
-		// Check if truncate is needed
-		if opts.Truncate {
-			if err := f.Truncate(ctx, off+len(data)); err != nil {
-				return 0, err
-			}
+	// Write the data
+	written, err = f.writeAccrossChunks(ctx, data, off)
+	if err != nil {
+		return 0, err
+	}
+
+	// Check if truncate is needed
+	if opts.Truncate {
+		if err := f.Truncate(ctx, off+len(data)); err != nil {
+			return 0, err
 		}
 	}
 
@@ -163,6 +174,7 @@ func (f *file) append(ctx context.Context, data []byte) error {
 	return err
 }
 
+// Truncate truncates the file to the given size.
 func (f *file) Truncate(ctx context.Context, newSize int) error {
 	// Check if we need to truncate
 	oldSize, err := f.Size(ctx)
@@ -192,50 +204,36 @@ func (f *file) Truncate(ctx context.Context, newSize int) error {
 	return nil
 }
 
+// Size returns the size of the file.
 func (f *file) Size(ctx context.Context) (int, error) {
 	return f.storageFile.Size(ctx)
 }
 
-func (f *file) resizeChunks(ctx context.Context, total int) error {
+func (f *file) resizeChunks(ctx context.Context, newSize int) error {
 	// Check if there is enough space, and allocate what's missing
-	size, err := f.Size(ctx)
+	oldSize, err := f.Size(ctx)
 	if err != nil {
 		return err
-	} else if int(total) <= size {
+	} else if newSize <= oldSize {
 		return err
 	}
 
-	chunkNb, err := f.storageFile.ChunksCount(ctx)
-	if err != nil {
-		return err
-	}
-
-	// Check if the last chunk is not full, make it full if needed
-	if size%f.chunkSize != 0 {
-		// Ask for a full resize
-		resize := f.chunkSize
-
-		// However, if the total size is smaller than the chunk size, resize to the total size
-		if total-size < f.chunkSize {
-			resize = total - (chunkNb-1)*f.chunkSize
-		}
-
-		// Resize the last chunk
-		added, err := f.storageFile.ResizeLastChunk(ctx, resize)
-		if err != nil {
+	// Check if the last chunk is not full
+	if oldSize%f.chunkSize != 0 {
+		// Make it full or less
+		if err := f.makeLastChunkFullOrLess(ctx, oldSize, &newSize); err != nil {
 			return err
 		}
-		total -= added
 
 		// If there is nothing else to do, return
-		if total == size {
+		if newSize == oldSize {
 			return nil
 		}
 	}
 
 	// Get the total number of full chunks and the size of the last chunk
-	fullChunksToAdd := total / f.chunkSize
-	partialLastChunkToAdd := total % f.chunkSize
+	fullChunksToAdd := newSize / f.chunkSize
+	partialLastChunkToAdd := newSize % f.chunkSize
 	if partialLastChunkToAdd > 0 {
 		fullChunksToAdd++
 	}
@@ -251,6 +249,31 @@ func (f *file) resizeChunks(ctx context.Context, total int) error {
 			return err
 		}
 	}
+
+	return nil
+}
+
+func (f *file) makeLastChunkFullOrLess(ctx context.Context, oldSize int, newSize *int) error {
+	// Get chunk count
+	chunkNb, err := f.storageFile.ChunksCount(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Ask for a full resize
+	resize := f.chunkSize
+
+	// However, if the total size is smaller than the chunk size, resize to the total size
+	if *newSize-oldSize < f.chunkSize {
+		resize = *newSize - (chunkNb-1)*f.chunkSize
+	}
+
+	// Resize the last chunk
+	added, err := f.storageFile.ResizeLastChunk(ctx, resize)
+	if err != nil {
+		return err
+	}
+	*newSize -= added
 
 	return nil
 }
@@ -280,7 +303,8 @@ func (f *file) writeAccrossChunks(ctx context.Context, data []byte, off int) (wr
 	return written, nil
 }
 
-func (f *file) Sync(ctx context.Context) error {
+// Sync saves the file to the storage.
+func (f *file) Sync(_ context.Context) error {
 	// TODO: Save to a embedded backend
 	return nil
 }

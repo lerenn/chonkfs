@@ -15,7 +15,7 @@ import (
 // calls are called.
 type FileImplementer struct{}
 
-// Capabilities that the FSImplementer struct should implements
+// Capabilities that the FSImplementer struct should implements.
 var (
 	_ fs.FileAllocater       = (*FileImplementer)(nil)
 	_ fs.FileFlusher         = (*FileImplementer)(nil)
@@ -37,7 +37,8 @@ var (
 	_ fs.FileWriter          = (*FileImplementer)(nil)
 )
 
-func (fi FileImplementer) Detector(skippable bool, format string, args ...interface{}) {
+//nolint:unparam
+func (fi FileImplementer) detectorf(skippable bool, format string, args ...interface{}) {
 	if skippable {
 		fmt.Printf("SKIPPABLE: FileImplementer."+format+"\n", args...)
 	} else {
@@ -45,91 +46,115 @@ func (fi FileImplementer) Detector(skippable bool, format string, args ...interf
 	}
 }
 
-func (fi FileImplementer) Allocate(ctx context.Context, off uint64, size uint64, mode uint32) syscall.Errno {
-	fi.Detector(false, "Allocate")
+// Allocate is a file callback.
+func (fi FileImplementer) Allocate(_ context.Context, _ uint64, _ uint64, _ uint32) syscall.Errno {
+	fi.detectorf(false, "Allocate")
 	return syscall.EOPNOTSUPP
 }
 
-func (fi FileImplementer) Flush(ctx context.Context) syscall.Errno {
-	fi.Detector(true, "Flush")
+// Flush is a file callback.
+func (fi FileImplementer) Flush(_ context.Context) syscall.Errno {
+	fi.detectorf(true, "Flush")
 	return syscall.EOPNOTSUPP
 }
 
-func (fi FileImplementer) Fsyncdir(ctx context.Context, flags uint32) syscall.Errno {
-	fi.Detector(false, "Fsyncdir")
+// Fsyncdir is a file callback.
+func (fi FileImplementer) Fsyncdir(_ context.Context, _ uint32) syscall.Errno {
+	fi.detectorf(false, "Fsyncdir")
 	return syscall.EOPNOTSUPP
 }
 
-func (fi FileImplementer) Fsync(ctx context.Context, flags uint32) syscall.Errno {
-	fi.Detector(false, "Fsync")
+// Fsync is a file callback.
+func (fi FileImplementer) Fsync(_ context.Context, _ uint32) syscall.Errno {
+	fi.detectorf(false, "Fsync")
 	return syscall.EOPNOTSUPP
 }
 
-func (fi FileImplementer) Getattr(ctx context.Context, out *fuse.AttrOut) syscall.Errno {
-	fi.Detector(false, "Getattr")
+// Getattr is a file callback.
+func (fi FileImplementer) Getattr(_ context.Context, _ *fuse.AttrOut) syscall.Errno {
+	fi.detectorf(false, "Getattr")
 	return syscall.EOPNOTSUPP
 }
 
-func (fi FileImplementer) Getlk(ctx context.Context, owner uint64, lk *fuse.FileLock, flags uint32, out *fuse.FileLock) syscall.Errno {
-	fi.Detector(false, "Getlk")
+// Getlk is a file callback.
+func (fi FileImplementer) Getlk(
+	_ context.Context,
+	_ uint64,
+	_ *fuse.FileLock,
+	_ uint32,
+	_ *fuse.FileLock,
+) syscall.Errno {
+	fi.detectorf(false, "Getlk")
 	return syscall.EOPNOTSUPP
 }
 
-func (fi FileImplementer) Lseek(ctx context.Context, off uint64, whence uint32) (uint64, syscall.Errno) {
-	fi.Detector(false, "Lseek")
+// Lseek is a file callback.
+func (fi FileImplementer) Lseek(_ context.Context, _ uint64, _ uint32) (uint64, syscall.Errno) {
+	fi.detectorf(false, "Lseek")
 	return 0, syscall.EOPNOTSUPP
 }
 
+// PassthroughFd is a file callback.
 func (fi FileImplementer) PassthroughFd() (int, bool) {
-	fi.Detector(true, "PassthroughFd")
+	fi.detectorf(true, "PassthroughFd")
 	return 0, false
 }
 
-func (fi FileImplementer) Readdirent(ctx context.Context) (*fuse.DirEntry, syscall.Errno) {
-	fi.Detector(false, "Readdirent")
+// Readdirent is a file callback.
+func (fi FileImplementer) Readdirent(_ context.Context) (*fuse.DirEntry, syscall.Errno) {
+	fi.detectorf(false, "Readdirent")
 	return nil, syscall.EOPNOTSUPP
 }
 
-func (fi FileImplementer) Read(ctx context.Context, dest []byte, off int64) (fuse.ReadResult, syscall.Errno) {
-	fi.Detector(false, "Read")
+// Read is a file callback.
+func (fi FileImplementer) Read(_ context.Context, _ []byte, _ int64) (fuse.ReadResult, syscall.Errno) {
+	fi.detectorf(false, "Read")
 	return nil, syscall.EOPNOTSUPP
 }
 
-func (fi FileImplementer) Releasedir(ctx context.Context, releaseFlags uint32) {
-	fi.Detector(true, "Releasedir")
+// Releasedir is a file callback.
+func (fi FileImplementer) Releasedir(_ context.Context, _ uint32) {
+	fi.detectorf(true, "Releasedir")
 }
 
-func (fi FileImplementer) Release(ctx context.Context) syscall.Errno {
-	fi.Detector(true, "Release")
+// Release is a file callback.
+func (fi FileImplementer) Release(_ context.Context) syscall.Errno {
+	fi.detectorf(true, "Release")
 	return syscall.EOPNOTSUPP
 }
 
-func (fi FileImplementer) Seekdir(ctx context.Context, off uint64) syscall.Errno {
-	fi.Detector(false, "Seekdir")
+// Seekdir is a file callback.
+func (fi FileImplementer) Seekdir(_ context.Context, _ uint64) syscall.Errno {
+	fi.detectorf(false, "Seekdir")
 	return syscall.EOPNOTSUPP
 }
 
-func (fi FileImplementer) Setattr(ctx context.Context, in *fuse.SetAttrIn, out *fuse.AttrOut) syscall.Errno {
-	fi.Detector(false, "Setattr")
+// Setattr is a file callback.
+func (fi FileImplementer) Setattr(_ context.Context, _ *fuse.SetAttrIn, _ *fuse.AttrOut) syscall.Errno {
+	fi.detectorf(false, "Setattr")
 	return syscall.EOPNOTSUPP
 }
 
-func (fi FileImplementer) Setlk(ctx context.Context, owner uint64, lk *fuse.FileLock, flags uint32) syscall.Errno {
-	fi.Detector(false, "Setlk")
+// Setlk is a file callback.
+func (fi FileImplementer) Setlk(_ context.Context, _ uint64, _ *fuse.FileLock, _ uint32) syscall.Errno {
+	fi.detectorf(false, "Setlk")
 	return syscall.EOPNOTSUPP
 }
 
-func (fi FileImplementer) Setlkw(ctx context.Context, owner uint64, lk *fuse.FileLock, flags uint32) syscall.Errno {
-	fi.Detector(false, "Setlkw")
+// Setlkw is a file callback.
+func (fi FileImplementer) Setlkw(_ context.Context, _ uint64, _ *fuse.FileLock, _ uint32) syscall.Errno {
+	fi.detectorf(false, "Setlkw")
 	return syscall.EOPNOTSUPP
 }
 
-func (fi FileImplementer) Statx(ctx context.Context, flags uint32, mask uint32, out *fuse.StatxOut) syscall.Errno {
-	fi.Detector(false, "Statx")
+// Statx is a file callback.
+func (fi FileImplementer) Statx(_ context.Context, _ uint32, _ uint32, _ *fuse.StatxOut) syscall.Errno {
+	fi.detectorf(false, "Statx")
 	return syscall.EOPNOTSUPP
 }
 
-func (fi FileImplementer) Write(ctx context.Context, data []byte, off int64) (written uint32, errno syscall.Errno) {
-	fi.Detector(false, "Write")
+// Write is a file callback.
+func (fi FileImplementer) Write(_ context.Context, _ []byte, _ int64) (written uint32, errno syscall.Errno) {
+	fi.detectorf(false, "Write")
 	return 0, syscall.EOPNOTSUPP
 }

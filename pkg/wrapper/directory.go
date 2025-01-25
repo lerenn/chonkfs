@@ -13,21 +13,27 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-type DirectoryOption func(dir *Directory)
+type directoryOption func(dir *Directory)
 
-func WithDirectoryLogger(logger *log.Logger) DirectoryOption {
+// WithDirectoryLogger is an option to set the logger of a directory.
+//
+//nolint:revive
+func WithDirectoryLogger(logger *log.Logger) directoryOption {
 	return func(dir *Directory) {
 		dir.logger = logger
 	}
 }
 
-func WithDirectoryChunkSize(chunkSize int) DirectoryOption {
+// WithDirectoryChunkSize is an option to set the chunk size of a directory.
+//
+//nolint:revive
+func WithDirectoryChunkSize(chunkSize int) directoryOption {
 	return func(dir *Directory) {
 		dir.chunkSize = chunkSize
 	}
 }
 
-// Capabilities that the dir struct should implements
+// Capabilities that the dir struct should implements.
 var (
 	_ fs.InodeEmbedder = (*Directory)(nil)
 
@@ -43,8 +49,10 @@ var (
 	_ fs.NodeUnlinker  = (*Directory)(nil)
 )
 
-const dirMode = syscall.S_IFDIR | syscall.S_IRWXU | syscall.S_IRGRP | syscall.S_IXGRP | syscall.S_IROTH | syscall.S_IXOTH
+const dirMode = syscall.S_IFDIR | syscall.S_IRWXU | syscall.S_IRGRP |
+	syscall.S_IXGRP | syscall.S_IROTH | syscall.S_IXOTH
 
+// Directory is a representation of a FUSE directory as wrapper of chonker.
 type Directory struct {
 	fs.Inode
 
@@ -52,12 +60,13 @@ type Directory struct {
 
 	// Optional
 
-	options   []DirectoryOption
+	options   []directoryOption
 	logger    *log.Logger
 	chunkSize int
 }
 
-func NewDirectory(backend chonker.Directory, options ...DirectoryOption) *Directory {
+// NewDirectory creates a new directory.
+func NewDirectory(backend chonker.Directory, options ...directoryOption) *Directory {
 	// Create a default directory
 	dir := &Directory{
 		backend:   backend,
@@ -74,12 +83,13 @@ func NewDirectory(backend chonker.Directory, options ...DirectoryOption) *Direct
 	return dir
 }
 
+// Create creates a child node of the directory for the FUSE system.
 func (d *Directory) Create(
 	ctx context.Context,
 	name string,
-	flags uint32,
-	mode uint32,
-	out *fuse.EntryOut,
+	_ uint32,
+	_ uint32,
+	_ *fuse.EntryOut,
 ) (node *fs.Inode, fh fs.FileHandle, fuseFlags uint32, errno syscall.Errno) {
 	d.logger.Printf("Directory.Create(name=%q, ...)\n", name)
 
@@ -101,7 +111,8 @@ func (d *Directory) Create(
 	return d.NewInode(ctx, f, fs.StableAttr{Mode: syscall.S_IFREG}), f, fuse.FOPEN_DIRECT_IO, fs.OK
 }
 
-func (d *Directory) Getattr(ctx context.Context, fh fs.FileHandle, out *fuse.AttrOut) syscall.Errno {
+// Getattr returns the attributes of the directory for the FUSE system.
+func (d *Directory) Getattr(_ context.Context, _ fs.FileHandle, out *fuse.AttrOut) syscall.Errno {
 	d.logger.Printf("Directory.Getattr(...)\n")
 
 	out.Mode = dirMode
@@ -110,7 +121,14 @@ func (d *Directory) Getattr(ctx context.Context, fh fs.FileHandle, out *fuse.Att
 	return fs.OK
 }
 
-func (d *Directory) Statx(ctx context.Context, f fs.FileHandle, flags uint32, mask uint32, out *fuse.StatxOut) syscall.Errno {
+// Statx returns the stats of the directory for the FUSE system.
+func (d *Directory) Statx(
+	_ context.Context,
+	_ fs.FileHandle,
+	_ uint32,
+	_ uint32,
+	out *fuse.StatxOut,
+) syscall.Errno {
 	d.logger.Printf("Directory.Statx(...)\n")
 
 	out.Mode = dirMode
@@ -119,36 +137,17 @@ func (d *Directory) Statx(ctx context.Context, f fs.FileHandle, flags uint32, ma
 	return fs.OK
 }
 
+// Lookup returns the child directory of the directory for the FUSE system.
 func (d *Directory) Lookup(ctx context.Context, name string, out *fuse.EntryOut) (*fs.Inode, syscall.Errno) {
 	d.logger.Printf("Directory.Lookup(name=%q, ...)\n", name)
 
 	// Get backend child directory
 	backendChildDir, err := d.backend.GetDirectory(ctx, name)
 
-	switch err {
-	case nil:
-		// Create inode
-		ino := d.NewInode(ctx,
-			NewDirectory(backendChildDir, d.options...),
-			fs.StableAttr{
-				Mode: syscall.S_IFDIR,
-			})
-
-		// Set mode from backend
-		_, err := backendChildDir.GetAttributes(ctx)
-		if err != nil {
-			return nil, chonker.ToSyscallErrno(err, chonker.ToSyscallErrnoOptions{
-				Logger: d.logger,
-			})
-		}
-
-		// Add info
-		out.Blksize = uint32(d.chunkSize)
-		out.Mode = dirMode
-
-		// Return the inode
-		return ino, fs.OK
-	case chonker.ErrNotDirectory:
+	switch {
+	case err == nil:
+		return d.lookUpDirectory(ctx, backendChildDir, out)
+	case errors.Is(err, chonker.ErrNotDirectory):
 		// Get backend file
 		backendChildFile, err := d.backend.GetFile(ctx, name)
 		if err != nil {
@@ -157,32 +156,7 @@ func (d *Directory) Lookup(ctx context.Context, name string, out *fuse.EntryOut)
 			})
 		}
 
-		// Create inode
-		ino := d.NewInode(ctx,
-			NewFile(backendChildFile,
-				WithFileLogger(d.logger),
-				WithFileChunkSize(d.chunkSize),
-				WithFileName(name)),
-			fs.StableAttr{
-				Mode: syscall.S_IFREG,
-			})
-
-		// Set mode from backend
-		attr, err := backendChildFile.GetAttributes(ctx)
-		if err != nil {
-			return nil, chonker.ToSyscallErrno(err, chonker.ToSyscallErrnoOptions{
-				Logger: d.logger,
-			})
-		}
-
-		// Add info
-		out.Size = uint64(attr.Size)
-		out.Blocks = uint64((attr.Size-1)/d.chunkSize + 1)
-		out.Blksize = uint32(d.chunkSize)
-		out.Mode = fileMode
-
-		// Return the inode
-		return ino, fs.OK
+		return d.lookUpFile(ctx, backendChildFile, name, out)
 	default:
 		return nil, chonker.ToSyscallErrno(err, chonker.ToSyscallErrnoOptions{
 			Logger: d.logger,
@@ -190,7 +164,75 @@ func (d *Directory) Lookup(ctx context.Context, name string, out *fuse.EntryOut)
 	}
 }
 
-func (d *Directory) Mkdir(ctx context.Context, name string, mode uint32, out *fuse.EntryOut) (*fs.Inode, syscall.Errno) {
+func (d *Directory) lookUpDirectory(
+	ctx context.Context,
+	backendChildDir chonker.Directory,
+	out *fuse.EntryOut,
+) (*fs.Inode, syscall.Errno) {
+	// Create inode
+	ino := d.NewInode(ctx,
+		NewDirectory(backendChildDir, d.options...),
+		fs.StableAttr{
+			Mode: syscall.S_IFDIR,
+		})
+
+	// Set mode from backend
+	_, err := backendChildDir.GetAttributes(ctx)
+	if err != nil {
+		return nil, chonker.ToSyscallErrno(err, chonker.ToSyscallErrnoOptions{
+			Logger: d.logger,
+		})
+	}
+
+	// Add info
+	out.Blksize = uint32(d.chunkSize)
+	out.Mode = dirMode
+
+	// Return the inode
+	return ino, fs.OK
+}
+
+func (d *Directory) lookUpFile(
+	ctx context.Context,
+	backendChildFile chonker.File,
+	name string,
+	out *fuse.EntryOut,
+) (*fs.Inode, syscall.Errno) {
+	// Create inode
+	ino := d.NewInode(ctx,
+		NewFile(backendChildFile,
+			WithFileLogger(d.logger),
+			WithFileChunkSize(d.chunkSize),
+			WithFileName(name)),
+		fs.StableAttr{
+			Mode: syscall.S_IFREG,
+		})
+
+	// Set mode from backend
+	attr, err := backendChildFile.GetAttributes(ctx)
+	if err != nil {
+		return nil, chonker.ToSyscallErrno(err, chonker.ToSyscallErrnoOptions{
+			Logger: d.logger,
+		})
+	}
+
+	// Add info
+	out.Size = uint64(attr.Size)
+	out.Blocks = uint64((attr.Size-1)/d.chunkSize + 1)
+	out.Blksize = uint32(d.chunkSize)
+	out.Mode = fileMode
+
+	// Return the inode
+	return ino, fs.OK
+}
+
+// Mkdir creates a child directory of the directory for the FUSE system.
+func (d *Directory) Mkdir(
+	ctx context.Context,
+	name string,
+	_ uint32,
+	_ *fuse.EntryOut,
+) (*fs.Inode, syscall.Errno) {
 	d.logger.Printf("Directory.Mkdir(...)\n")
 
 	// Create a new child directory from backend
@@ -207,6 +249,7 @@ func (d *Directory) Mkdir(ctx context.Context, name string, mode uint32, out *fu
 		fs.StableAttr{Mode: syscall.S_IFDIR}), fs.OK
 }
 
+// Readdir returns the children of the directory for the FUSE system.
 func (d *Directory) Readdir(ctx context.Context) (fs.DirStream, syscall.Errno) {
 	d.logger.Printf("Directory.Readdir(...)\n")
 
@@ -247,6 +290,7 @@ func (d *Directory) Readdir(ctx context.Context) (fs.DirStream, syscall.Errno) {
 	return fs.NewListDirStream(list), fs.OK
 }
 
+// Rmdir removes a child directory of the directory for the FUSE system.
 func (d *Directory) Rmdir(ctx context.Context, name string) syscall.Errno {
 	d.logger.Printf("Directory.Rmdir(...)\n")
 	return chonker.ToSyscallErrno(
@@ -257,6 +301,7 @@ func (d *Directory) Rmdir(ctx context.Context, name string) syscall.Errno {
 	)
 }
 
+// Unlink removes a child directory of the directory for the FUSE system.
 func (d *Directory) Unlink(ctx context.Context, name string) syscall.Errno {
 	d.logger.Printf("Directory.Unlink(name=%q, ...)\n", name)
 	return chonker.ToSyscallErrno(
@@ -267,12 +312,20 @@ func (d *Directory) Unlink(ctx context.Context, name string) syscall.Errno {
 	)
 }
 
-func (d *Directory) Setattr(ctx context.Context, f fs.FileHandle, in *fuse.SetAttrIn, out *fuse.AttrOut) syscall.Errno {
+// Setattr sets the attributes of the directory for the FUSE system.
+func (d *Directory) Setattr(_ context.Context, _ fs.FileHandle, _ *fuse.SetAttrIn, _ *fuse.AttrOut) syscall.Errno {
 	d.logger.Printf("Directory.Setattr(...)\n")
 	return fs.OK
 }
 
-func (d *Directory) Rename(ctx context.Context, name string, newParent fs.InodeEmbedder, newName string, flags uint32) syscall.Errno {
+// Rename renames a child directory of the directory for the FUSE system.
+func (d *Directory) Rename(
+	ctx context.Context,
+	name string,
+	newParent fs.InodeEmbedder,
+	newName string,
+	flags uint32,
+) syscall.Errno {
 	d.logger.Printf("Directory.Rename(name=%q, newName=%q)\n", name, newName)
 
 	// Get the new parent directory

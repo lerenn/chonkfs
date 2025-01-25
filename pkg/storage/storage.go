@@ -4,6 +4,7 @@ import (
 	"context"
 )
 
+// Directory represents a directory in the storage.
 type Directory interface {
 	// Directories
 
@@ -23,9 +24,11 @@ type Directory interface {
 	RenameFile(ctx context.Context, name string, newParent Directory, newName string, noReplace bool) error
 }
 
+// DirectoryInfo represents the information of a directory.
 type DirectoryInfo struct {
 }
 
+// File represents a file in the storage.
 type File interface {
 	Size(ctx context.Context) (int, error)
 	WriteChunk(ctx context.Context, chunkIndex int, start int, end *int, data []byte) (int, error)
@@ -37,6 +40,7 @@ type File interface {
 	Info(ctx context.Context) (FileInfo, error)
 }
 
+// FileInfo represents the information of a file.
 type FileInfo struct {
 	ChunkSize int
 }
