@@ -124,15 +124,15 @@ func (f *File) ResizeLastChunk(_ context.Context, size int) (changed int, err er
 	}
 
 	lastChunkSize := len(f.data[len(f.data)-1])
-	if size < lastChunkSize {
+	toModify := size - lastChunkSize
+	if toModify < 0 {
 		// Truncate the last chunk
 		f.data[len(f.data)-1] = f.data[len(f.data)-1][:size]
-		return -size, nil
-	} else if size > lastChunkSize {
+		return toModify, nil
+	} else if toModify > 0 {
 		// Add data to the last chunk
-		toAdd := size - lastChunkSize
-		f.data[len(f.data)-1] = append(f.data[len(f.data)-1], make([]byte, toAdd)...)
-		return toAdd, nil
+		f.data[len(f.data)-1] = append(f.data[len(f.data)-1], make([]byte, toModify)...)
+		return toModify, nil
 	}
 
 	return 0, nil
