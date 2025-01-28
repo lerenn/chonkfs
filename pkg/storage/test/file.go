@@ -7,11 +7,13 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+// FileSuite is a test suite for a file.
 type FileSuite struct {
 	Directory storage.Directory
 	suite.Suite
 }
 
+// TestSize tests getting the file size.
 func (suite *FileSuite) TestSize() {
 	// Create a file from the directory
 	file, err := suite.Directory.CreateFile(context.Background(), "dir", 4096)
@@ -40,6 +42,7 @@ func (suite *FileSuite) TestSize() {
 	suite.Require().Equal(13, size)
 }
 
+// TestReadWriteChunk tests reading and writing a chunk.
 func (suite *FileSuite) TestReadWriteChunk() {
 	// Create a file from the directory
 	file, err := suite.Directory.CreateFile(context.Background(), "dir", 4096)
@@ -64,6 +67,7 @@ func (suite *FileSuite) TestReadWriteChunk() {
 	suite.Require().Equal(data, readData)
 }
 
+// TestResizeChunksAndChunksCount tests resizing the chunks and getting the chunks count.
 func (suite *FileSuite) TestResizeChunksAndChunksCount() {
 	// Create a file from the directory
 	file, err := suite.Directory.CreateFile(context.Background(), "dir", 1)
@@ -92,6 +96,7 @@ func (suite *FileSuite) TestResizeChunksAndChunksCount() {
 	suite.Require().Error(err)
 }
 
+// TestResizeLastChunkAndLastChunkSize tests resizing the last chunk and getting the last chunk size.
 func (suite *FileSuite) TestResizeLastChunkAndLastChunkSize() {
 	// Create a file from the directory
 	file, err := suite.Directory.CreateFile(context.Background(), "dir", 4096)
@@ -110,7 +115,7 @@ func (suite *FileSuite) TestResizeLastChunkAndLastChunkSize() {
 	suite.Require().NoError(err)
 	suite.Require().Equal(4096, size)
 
-	// Resize the last chunk and returns the substract values
+	// Resize the last chunk and returns the subtract values
 	changed, err := file.ResizeLastChunk(context.Background(), 12)
 	suite.Require().NoError(err)
 	suite.Require().Equal(12-4096, changed)
@@ -120,7 +125,7 @@ func (suite *FileSuite) TestResizeLastChunkAndLastChunkSize() {
 	suite.Require().NoError(err)
 	suite.Require().Equal(12, size)
 
-	// Resize the last chunk and returns the substract values
+	// Resize the last chunk and returns the subtract values
 	changed, err = file.ResizeLastChunk(context.Background(), 24)
 	suite.Require().NoError(err)
 	suite.Require().Equal(12, changed)
@@ -131,6 +136,7 @@ func (suite *FileSuite) TestResizeLastChunkAndLastChunkSize() {
 	suite.Require().Equal(24, size)
 }
 
+// TestInfo tests getting the file info.
 func (suite *FileSuite) TestInfo() {
 	// Create a file from the directory
 	file, err := suite.Directory.CreateFile(context.Background(), "dir", 4096)

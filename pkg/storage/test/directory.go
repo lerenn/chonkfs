@@ -7,11 +7,13 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+// DirectorySuite is a test suite for a directory.
 type DirectorySuite struct {
 	Directory storage.Directory
 	suite.Suite
 }
 
+// TestCreateGetDirectory tests creating and getting a directory.
 func (suite *DirectorySuite) TestCreateGetDirectory() {
 	// Create a directory
 	nd, err := suite.Directory.CreateDirectory(context.Background(), "dir")
@@ -23,6 +25,7 @@ func (suite *DirectorySuite) TestCreateGetDirectory() {
 	suite.Require().Equal(nd, dir)
 }
 
+// TestListDirectories tests listing directories.
 func (suite *DirectorySuite) TestListDirectories() {
 	// Create three directories
 	_, err := suite.Directory.CreateDirectory(context.Background(), "dir1")
@@ -41,12 +44,25 @@ func (suite *DirectorySuite) TestListDirectories() {
 	suite.Require().Contains(dirs, "dir3")
 }
 
+// TestInfo tests getting the directory info.
 func (suite *DirectorySuite) TestInfo() {
 	info, err := suite.Directory.Info(context.Background())
 	suite.Require().NoError(err)
 	suite.Require().Equal(storage.DirectoryInfo{}, info)
 }
 
+// TestCreateDirectoryAlreadyExists tests creating a directory that already exists.
+func (suite *DirectorySuite) TestCreateDirectoryAlreadyExists() {
+	// Create a directory
+	_, err := suite.Directory.CreateDirectory(context.Background(), "dir")
+	suite.Require().NoError(err)
+
+	// Create the same directory
+	_, err = suite.Directory.CreateDirectory(context.Background(), "dir")
+	suite.Require().Error(err)
+}
+
+// TestRemoveDirectory tests removing a directory.
 func (suite *DirectorySuite) TestRemoveDirectory() {
 	// Create a directory
 	_, err := suite.Directory.CreateDirectory(context.Background(), "dir")
@@ -66,6 +82,7 @@ func (suite *DirectorySuite) TestRemoveDirectory() {
 	suite.Require().Len(dirs, 0)
 }
 
+// TestRenameDirectory tests renaming a directory.
 func (suite *DirectorySuite) TestRenameDirectory() {
 	// Create a directory
 	_, err := suite.Directory.CreateDirectory(context.Background(), "dir")
@@ -85,6 +102,7 @@ func (suite *DirectorySuite) TestRenameDirectory() {
 	suite.Require().Error(err)
 }
 
+// TestCreateGetFile tests creating and getting a file.
 func (suite *DirectorySuite) TestCreateGetFile() {
 	// Create a file
 	f, err := suite.Directory.CreateFile(context.Background(), "file", 1)
@@ -96,6 +114,7 @@ func (suite *DirectorySuite) TestCreateGetFile() {
 	suite.Require().Equal(f, file)
 }
 
+// TestListFiles tests listing files.
 func (suite *DirectorySuite) TestListFiles() {
 	// Create three files
 	_, err := suite.Directory.CreateFile(context.Background(), "file1", 1)
@@ -114,6 +133,7 @@ func (suite *DirectorySuite) TestListFiles() {
 	suite.Require().Contains(files, "file3")
 }
 
+// TestCreateFileAlreadyExists tests creating a file that already exists.
 func (suite *DirectorySuite) TestCreateFileAlreadyExists() {
 	// Create a file
 	_, err := suite.Directory.CreateFile(context.Background(), "file", 1)
@@ -124,6 +144,7 @@ func (suite *DirectorySuite) TestCreateFileAlreadyExists() {
 	suite.Require().Error(err)
 }
 
+// TestRemoveFile tests removing a file.
 func (suite *DirectorySuite) TestRemoveFile() {
 	// Create a file
 	_, err := suite.Directory.CreateFile(context.Background(), "file", 1)
@@ -143,6 +164,7 @@ func (suite *DirectorySuite) TestRemoveFile() {
 	suite.Require().Len(files, 0)
 }
 
+// TestRenameFile tests renaming a file.
 func (suite *DirectorySuite) TestRenameFile() {
 	// Create a file
 	_, err := suite.Directory.CreateFile(context.Background(), "file", 4096)
