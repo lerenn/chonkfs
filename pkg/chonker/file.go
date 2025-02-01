@@ -305,6 +305,6 @@ func (f *file) writeAccrossChunks(ctx context.Context, data []byte, off int) (wr
 
 // Sync saves the file to the storage.
 func (f *file) Sync(_ context.Context) error {
-	// TODO: Save to a embedded backend
+	// TODO: Save to a embedded backend if the option for direct io is not set
 	return nil
 }

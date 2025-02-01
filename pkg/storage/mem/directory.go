@@ -17,7 +17,7 @@ type DirectoryOptions struct {
 // Directory is a directory in memory.
 type Directory struct {
 	directories map[string]*Directory
-	files       map[string]*File
+	files       map[string]*file
 	opts        *DirectoryOptions
 }
 
@@ -25,7 +25,7 @@ type Directory struct {
 func NewDirectory(opts *DirectoryOptions) *Directory {
 	return &Directory{
 		directories: make(map[string]*Directory),
-		files:       make(map[string]*File),
+		files:       make(map[string]*file),
 		opts:        opts,
 	}
 }
@@ -123,7 +123,7 @@ func (d *Directory) CreateFile(ctx context.Context, name string, chunkSize int) 
 		return nil, fmt.Errorf("couldn't create file %q: %w", name, storage.ErrFileAlreadyExists)
 	}
 
-	f := newFile(chunkSize, &FileOptions{
+	f := newFile(chunkSize, &fileOptions{
 		Underlayer: childUnderlayer,
 	})
 	d.files[name] = f
