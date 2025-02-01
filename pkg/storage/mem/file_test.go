@@ -16,5 +16,5 @@ type FileSuite struct {
 }
 
 func (s *FileSuite) SetupTest() {
-	s.Directory = NewDirectory()
+	s.Directory = NewDirectory(nil)
 }

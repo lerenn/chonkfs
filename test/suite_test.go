@@ -68,7 +68,7 @@ func (suite *Suite) createChonkFS(
 
 func (suite *Suite) TestWriteOnlyThenReadOnly() {
 	// Mount chunkfs
-	c, err := chonker.NewDirectory(context.Background(), mem.NewDirectory())
+	c, err := chonker.NewDirectory(context.Background(), mem.NewDirectory(nil))
 	suite.Require().NoError(err)
 	path, srv := suite.createChonkFS(c, 4096)
 
@@ -116,7 +116,7 @@ func (suite *Suite) TestWriteOnlyThenReadOnly() {
 
 func (suite *Suite) TestReadWriteMode() {
 	// Mount chunkfs
-	c, err := chonker.NewDirectory(context.Background(), mem.NewDirectory())
+	c, err := chonker.NewDirectory(context.Background(), mem.NewDirectory(nil))
 	suite.Require().NoError(err)
 	path, srv := suite.createChonkFS(c, 4096)
 
@@ -154,7 +154,7 @@ func (suite *Suite) TestReadWriteMode() {
 
 func (suite *Suite) TestRandomReadWrite() {
 	// Mount chunkfs
-	c, err := chonker.NewDirectory(context.Background(), mem.NewDirectory())
+	c, err := chonker.NewDirectory(context.Background(), mem.NewDirectory(nil))
 	suite.Require().NoError(err)
 	path, srv := suite.createChonkFS(c, 4096)
 

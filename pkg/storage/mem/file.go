@@ -7,17 +7,31 @@ import (
 	"github.com/lerenn/chonkfs/pkg/storage"
 )
 
+type FileOptions struct {
+	Underlayer storage.File
+}
+
 // File is a file in chunks in memory.
 type File struct {
 	data      [][]byte
 	chunkSize int
+	opts      *FileOptions
 }
 
-func newFile(chunkSize int) *File {
+func newFile(chunkSize int, opts *FileOptions) *File {
 	return &File{
 		data:      make([][]byte, 0),
 		chunkSize: chunkSize,
+		opts:      opts,
 	}
+}
+
+func (f *File) Underlayer() storage.File {
+	if f.opts == nil {
+		return nil
+	}
+
+	return f.opts.Underlayer
 }
 
 // Info returns the file info.
