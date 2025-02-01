@@ -145,7 +145,6 @@ func (suite *DirectorySuite) TestCreateGetFile() {
 	// Read the file in the underlayer
 	_, err = suite.Underlayer.GetFile(context.Background(), "file")
 	suite.Require().NoError(err)
-
 }
 
 // TestListFiles tests listing files.

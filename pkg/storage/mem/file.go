@@ -72,21 +72,30 @@ func (f *file) ChunksCount(_ context.Context) (int, error) {
 	return len(f.data), nil
 }
 
-// WriteChunk writes data to a chunk.
-func (f *file) WriteChunk(ctx context.Context, chunkIndex int, start int, end *int, data []byte) (int, error) {
+func (f *file) checkWriteChunkParams(chunkIndex int, start int, end *int) error {
 	// Check if the chunk index is valid
 	if chunkIndex < 0 || chunkIndex >= len(f.data) {
-		return 0, storage.ErrInvalidChunkNb
+		return storage.ErrInvalidChunkNb
 	}
 
 	// Check if the start is valid
 	if start < 0 || start >= len(f.data[chunkIndex]) {
-		return 0, fmt.Errorf("%w: start is %d", storage.ErrInvalidStartOffset, start)
+		return fmt.Errorf("%w: start is %d", storage.ErrInvalidStartOffset, start)
 	}
 
 	// Check if the end is valid
 	if end != nil && (*end < 0 || *end > len(f.data[chunkIndex])) {
-		return 0, fmt.Errorf("%w: end is %d", storage.ErrInvalidEndOffset, start)
+		return fmt.Errorf("%w: end is %d", storage.ErrInvalidEndOffset, start)
+	}
+
+	return nil
+}
+
+// WriteChunk writes data to a chunk.
+func (f *file) WriteChunk(ctx context.Context, chunkIndex int, start int, end *int, data []byte) (int, error) {
+	// Check params
+	if err := f.checkWriteChunkParams(chunkIndex, start, end); err != nil {
+		return 0, err
 	}
 
 	// Write it in the underlayer, if there is one

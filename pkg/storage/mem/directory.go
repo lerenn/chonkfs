@@ -10,6 +10,7 @@ import (
 
 var _ storage.Directory = (*Directory)(nil)
 
+// DirectoryOptions represents the options that can be given to a Directory.
 type DirectoryOptions struct {
 	Underlayer storage.Directory
 }
@@ -30,6 +31,7 @@ func NewDirectory(opts *DirectoryOptions) *Directory {
 	}
 }
 
+// Underlayer returns the directory underlayer.
 func (d *Directory) Underlayer() storage.Directory {
 	if d.opts == nil {
 		return nil
