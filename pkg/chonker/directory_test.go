@@ -18,7 +18,7 @@ type DirectorySuite struct {
 
 func (suite *DirectorySuite) TestListFiles() {
 	// Create a directory
-	d, err := NewDirectory(context.Background(), mem.NewDirectory())
+	d, err := NewDirectory(context.Background(), mem.NewDirectory(nil))
 	suite.Require().NoError(err)
 
 	// Create a file

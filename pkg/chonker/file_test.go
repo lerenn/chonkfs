@@ -18,7 +18,7 @@ type FileSuite struct {
 }
 
 func (suite *FileSuite) SetupTest() {
-	d, err := NewDirectory(context.Background(), mem.NewDirectory())
+	d, err := NewDirectory(context.Background(), mem.NewDirectory(nil))
 	suite.Require().NoError(err)
 	suite.Directory = d
 }

@@ -22,8 +22,8 @@ func WithFileLogger(logger *log.Logger) fileOption {
 }
 
 type file struct {
-	storageFile storage.File
-	chunkSize   int
+	underlayer storage.File
+	chunkSize  int
 
 	opts   []fileOption
 	logger *log.Logger
@@ -38,10 +38,10 @@ func NewFile(
 ) (File, error) {
 	// Create a default file
 	f := &file{
-		storageFile: s,
-		chunkSize:   chunkSize,
-		opts:        opts,
-		logger:      log.New(io.Discard, "", 0),
+		underlayer: s,
+		chunkSize:  chunkSize,
+		opts:       opts,
+		logger:     log.New(io.Discard, "", 0),
 	}
 
 	// Apply options
@@ -80,7 +80,7 @@ func (f *file) Read(ctx context.Context, dest []byte, off int) ([]byte, error) {
 //nolint:cyclop
 func (f *file) readAccrossChunks(ctx context.Context, dest []byte, off int) ([]byte, error) {
 	// Get the total number of chunks
-	totalChunk, err := f.storageFile.ChunksCount(ctx)
+	totalChunk, err := f.underlayer.ChunksCount(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +90,7 @@ func (f *file) readAccrossChunks(ctx context.Context, dest []byte, off int) ([]b
 	if chunkNb >= totalChunk {
 		return []byte{}, nil
 	} else if chunkNb == totalChunk-1 {
-		ls, err := f.storageFile.LastChunkSize(ctx)
+		ls, err := f.underlayer.LastChunkSize(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -104,13 +104,13 @@ func (f *file) readAccrossChunks(ctx context.Context, dest []byte, off int) ([]b
 	read := 0
 	for ; read < len(dest) && chunkNb < totalChunk; chunkNb++ {
 		if read == 0 {
-			r, err := f.storageFile.ReadChunk(ctx, chunkNb, dest, off%f.chunkSize, nil)
+			r, err := f.underlayer.ReadChunk(ctx, chunkNb, dest, off%f.chunkSize, nil)
 			if err != nil {
 				return nil, err
 			}
 			read += r
 		} else {
-			r, err := f.storageFile.ReadChunk(ctx, chunkNb, dest[read:], 0, nil)
+			r, err := f.underlayer.ReadChunk(ctx, chunkNb, dest[read:], 0, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -188,7 +188,7 @@ func (f *file) Truncate(ctx context.Context, newSize int) error {
 	// NOTE: -1 is used to avoid the case where the last chunk is full
 	if (oldSize-1)/f.chunkSize != (newSize-1)/f.chunkSize {
 		lastChunkNb := newSize / f.chunkSize
-		if err := f.storageFile.ResizeChunksNb(ctx, lastChunkNb); err != nil {
+		if err := f.underlayer.ResizeChunksNb(ctx, lastChunkNb); err != nil {
 			return err
 		}
 	}
@@ -196,7 +196,7 @@ func (f *file) Truncate(ctx context.Context, newSize int) error {
 	// Truncate the last chunk if needed
 	partialLastChunkSize := newSize % f.chunkSize
 	if partialLastChunkSize > 0 {
-		if _, err := f.storageFile.ResizeLastChunk(ctx, partialLastChunkSize); err != nil {
+		if _, err := f.underlayer.ResizeLastChunk(ctx, partialLastChunkSize); err != nil {
 			return err
 		}
 	}
@@ -206,7 +206,7 @@ func (f *file) Truncate(ctx context.Context, newSize int) error {
 
 // Size returns the size of the file.
 func (f *file) Size(ctx context.Context) (int, error) {
-	return f.storageFile.Size(ctx)
+	return f.underlayer.Size(ctx)
 }
 
 func (f *file) resizeChunks(ctx context.Context, newSize int) error {
@@ -239,13 +239,13 @@ func (f *file) resizeChunks(ctx context.Context, newSize int) error {
 	}
 
 	// Add the missing chunks
-	if err := f.storageFile.ResizeChunksNb(ctx, fullChunksToAdd); err != nil {
+	if err := f.underlayer.ResizeChunksNb(ctx, fullChunksToAdd); err != nil {
 		return err
 	}
 
 	// Truncate the last chunk if needed
 	if partialLastChunkToAdd > 0 {
-		if _, err := f.storageFile.ResizeLastChunk(ctx, partialLastChunkToAdd); err != nil {
+		if _, err := f.underlayer.ResizeLastChunk(ctx, partialLastChunkToAdd); err != nil {
 			return err
 		}
 	}
@@ -255,7 +255,7 @@ func (f *file) resizeChunks(ctx context.Context, newSize int) error {
 
 func (f *file) makeLastChunkFullOrLess(ctx context.Context, oldSize int, newSize *int) error {
 	// Get chunk count
-	chunkNb, err := f.storageFile.ChunksCount(ctx)
+	chunkNb, err := f.underlayer.ChunksCount(ctx)
 	if err != nil {
 		return err
 	}
@@ -269,7 +269,7 @@ func (f *file) makeLastChunkFullOrLess(ctx context.Context, oldSize int, newSize
 	}
 
 	// Resize the last chunk
-	added, err := f.storageFile.ResizeLastChunk(ctx, resize)
+	added, err := f.underlayer.ResizeLastChunk(ctx, resize)
 	if err != nil {
 		return err
 	}
@@ -286,13 +286,13 @@ func (f *file) writeAccrossChunks(ctx context.Context, data []byte, off int) (wr
 
 	for chunkNb := off / f.chunkSize; written < len(data) && chunkNb < size; chunkNb++ {
 		if written == 0 {
-			w, err := f.storageFile.WriteChunk(ctx, chunkNb, off%f.chunkSize, nil, data)
+			w, err := f.underlayer.WriteChunk(ctx, chunkNb, off%f.chunkSize, nil, data)
 			if err != nil {
 				return 0, err
 			}
 			written += w
 		} else {
-			w, err := f.storageFile.WriteChunk(ctx, chunkNb, 0, nil, data[written:])
+			w, err := f.underlayer.WriteChunk(ctx, chunkNb, 0, nil, data[written:])
 			if err != nil {
 				return 0, err
 			}
@@ -305,6 +305,6 @@ func (f *file) writeAccrossChunks(ctx context.Context, data []byte, off int) (wr
 
 // Sync saves the file to the storage.
 func (f *file) Sync(_ context.Context) error {
-	// TODO: Save to a embedded backend
+	// TODO: Save to a embedded backend if the option for direct io is not set
 	return nil
 }

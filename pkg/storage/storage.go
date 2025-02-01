@@ -22,6 +22,10 @@ type Directory interface {
 	CreateFile(ctx context.Context, name string, chunkSize int) (File, error)
 	RemoveFile(ctx context.Context, name string) error
 	RenameFile(ctx context.Context, name string, newParent Directory, newName string, noReplace bool) error
+
+	// Underlayer
+
+	Underlayer() Directory
 }
 
 // DirectoryInfo represents the information of a directory.
@@ -38,6 +42,7 @@ type File interface {
 	LastChunkSize(ctx context.Context) (int, error)
 	ResizeLastChunk(ctx context.Context, size int) (changed int, err error)
 	Info(ctx context.Context) (FileInfo, error)
+	Underlayer() File
 }
 
 // FileInfo represents the information of a file.

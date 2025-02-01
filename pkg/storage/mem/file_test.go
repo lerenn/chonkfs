@@ -16,5 +16,8 @@ type FileSuite struct {
 }
 
 func (s *FileSuite) SetupTest() {
-	s.Directory = NewDirectory()
+	s.Underlayer = NewDirectory(nil)
+	s.Directory = NewDirectory(&DirectoryOptions{
+		Underlayer: s.Underlayer,
+	})
 }
