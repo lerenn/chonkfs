@@ -1,6 +1,7 @@
-package skeleton
+package disk
 
 import (
+	"os"
 	"testing"
 
 	"github.com/lerenn/chonkfs/pkg/storage/mem"
@@ -9,17 +10,28 @@ import (
 )
 
 func TestDirectorySuite(t *testing.T) {
-	t.Skip("Skeleton storage, not really implemented")
 	suite.Run(t, new(DirectorySuite))
 }
 
 type DirectorySuite struct {
+	path string
 	test.DirectorySuite
 }
 
 func (suite *DirectorySuite) SetupTest() {
+	// Create a temporary directory
+	path, err := os.MkdirTemp("/tmp", "chonkfs-storage-disk-*")
+	suite.Require().NoError(err)
+
+	// Set it as the directory with underlayer as memory
 	suite.Underlayer = mem.NewDirectory(nil)
-	suite.Directory = NewDirectory(&DirectoryOptions{
+	suite.Directory = NewDirectory(path, &DirectoryOptions{
 		Underlayer: suite.Underlayer,
 	})
+	suite.path = path
+}
+
+func (suite *DirectorySuite) TearDownTest() {
+	err := os.RemoveAll(suite.path)
+	suite.Require().NoError(err)
 }

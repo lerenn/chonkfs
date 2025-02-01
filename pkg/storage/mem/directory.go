@@ -73,38 +73,142 @@ func (d *Directory) Info(_ context.Context) (storage.DirectoryInfo, error) {
 }
 
 // ListFiles returns a map of files.
-func (d *Directory) ListFiles(_ context.Context) (map[string]storage.File, error) {
-	m := make(map[string]storage.File, len(d.files))
+func (d *Directory) ListFiles(ctx context.Context) (map[string]storage.File, error) {
+	// Get the actual list
+	m := make(map[string]storage.File, len(d.directories))
 	for p, f := range d.files {
 		m[p] = f
 	}
+
+	// Check if there is some from under that are not listed here
+	if u := d.Underlayer(); u != nil {
+		// Get the under dirs
+		underFiles, err := u.ListFiles(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		// Check that they are all present
+		for n, uf := range underFiles {
+			// If they are, just continue
+			if _, ok := m[n]; ok {
+				continue
+			}
+
+			// Get the info of the underlaying file
+			info, err := uf.Info(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			// Create a new file, based on the underlayer one
+			newFile := newFile(info.ChunkSize, &fileOptions{
+				Underlayer: uf,
+			})
+
+			// Add it to the result and to the memory
+			m[n] = newFile
+			d.files[n] = newFile
+		}
+	}
+
 	return m, nil
 }
 
 // GetDirectory returns a child directory.
-func (d *Directory) GetDirectory(_ context.Context, name string) (storage.Directory, error) {
+func (d *Directory) GetDirectory(ctx context.Context, name string) (storage.Directory, error) {
+	// If it exists, return the directory
 	dir, ok := d.directories[name]
-	if !ok {
-		return nil, storage.ErrDirectoryNotExists
+	if ok {
+		return dir, nil
 	}
-	return dir, nil
+
+	// If it doesn't, check that it doesn't exists on underlayer
+	if u := d.Underlayer(); u != nil {
+		childUnderlayer, err := u.GetDirectory(ctx, name)
+		if err != nil {
+			return nil, err
+		}
+
+		// Add it to the memory if it exists
+		dir = NewDirectory(&DirectoryOptions{
+			Underlayer: childUnderlayer,
+		})
+		d.directories[name] = dir
+
+		return dir, nil
+	}
+
+	return nil, storage.ErrDirectoryNotExists
 }
 
 // GetFile returns a child file.
-func (d *Directory) GetFile(_ context.Context, name string) (storage.File, error) {
+func (d *Directory) GetFile(ctx context.Context, name string) (storage.File, error) {
+	// Check locally
 	f, ok := d.files[name]
-	if !ok {
-		return nil, storage.ErrFileNotExists
+	if ok {
+		return f, nil
 	}
-	return f, nil
+
+	// If it doesn't, check that it doesn't exists on underlayer
+	if u := d.Underlayer(); u != nil {
+		childUnderlayer, err := u.GetFile(ctx, name)
+		if err != nil {
+			return nil, err
+		}
+
+		// Get info
+		fi, err := childUnderlayer.Info(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		// Add it to the memory if it exists
+		file := newFile(fi.ChunkSize, &fileOptions{
+			Underlayer: childUnderlayer,
+		})
+		d.files[name] = file
+
+		return file, nil
+	}
+
+	return nil, storage.ErrFileNotExists
 }
 
 // ListDirectories returns a map of directories.
-func (d *Directory) ListDirectories(_ context.Context) (map[string]storage.Directory, error) {
+func (d *Directory) ListDirectories(ctx context.Context) (map[string]storage.Directory, error) {
+	// Get the actual list
 	m := make(map[string]storage.Directory, len(d.directories))
 	for p, dir := range d.directories {
 		m[p] = dir
 	}
+
+	// Check if there is some from under that are not listed here
+	if u := d.Underlayer(); u != nil {
+		// Get the under dirs
+		underDirs, err := u.ListDirectories(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		// Check that they are all present
+		for n, ud := range underDirs {
+			// If they are, just continue
+			if _, ok := m[n]; ok {
+				continue
+			}
+
+			// Create a new directory, based on the underlayer one
+			newDir := NewDirectory(&DirectoryOptions{
+				Underlayer: ud,
+			})
+
+			// Add it to the result and to the memory
+			m[n] = newDir
+			d.directories[n] = newDir
+		}
+	}
+
 	return m, nil
 }
 
@@ -134,16 +238,11 @@ func (d *Directory) CreateFile(ctx context.Context, name string, chunkSize int) 
 
 // RemoveDirectory removes a child directory of the directory.
 func (d *Directory) RemoveDirectory(ctx context.Context, name string) error {
-	// Check if the directory already exists
+	// Remove in underlayer
 	if u := d.Underlayer(); u != nil {
-		// If there is an underlayer, then creates it here: it will check if
-		// the directory already exists
 		if err := u.RemoveDirectory(ctx, name); err != nil {
 			return err
 		}
-	} else if _, exist := d.directories[name]; !exist {
-		// If there is no corresponding directory, then return an error
-		return storage.ErrDirectoryNotExists
 	}
 
 	// Actually delete the directory

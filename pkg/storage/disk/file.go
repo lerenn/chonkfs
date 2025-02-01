@@ -1,4 +1,4 @@
-package skeleton
+package disk
 
 import (
 	"context"
@@ -14,12 +14,14 @@ type fileOptions struct {
 }
 
 type file struct {
+	path      string
 	chunkSize int
 	opts      *fileOptions
 }
 
-func newFile(chunkSize int, opts *fileOptions) *file {
+func newFile(path string, chunkSize int, opts *fileOptions) *file {
 	return &file{
+		path:      path,
 		chunkSize: chunkSize,
 		opts:      opts,
 	}

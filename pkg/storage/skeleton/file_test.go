@@ -3,6 +3,7 @@ package skeleton
 import (
 	"testing"
 
+	"github.com/lerenn/chonkfs/pkg/storage/mem"
 	"github.com/lerenn/chonkfs/pkg/storage/test"
 	"github.com/stretchr/testify/suite"
 )
@@ -16,6 +17,9 @@ type FileSuite struct {
 	test.FileSuite
 }
 
-func (s *FileSuite) SetupTest() {
-	s.Directory = NewDirectory()
+func (suite *FileSuite) SetupTest() {
+	suite.Underlayer = mem.NewDirectory(nil)
+	suite.Directory = NewDirectory(&DirectoryOptions{
+		Underlayer: suite.Underlayer,
+	})
 }
