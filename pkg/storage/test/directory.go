@@ -23,6 +23,13 @@ func (suite *DirectorySuite) TestCreateGetDirectory() {
 	// Read the directory
 	_, err = suite.Directory.GetDirectory(context.Background(), "dir")
 	suite.Require().NoError(err)
+}
+
+// TestCreateGetUnderlayerDirectory tests creating and getting a directory in the underlayer.
+func (suite *DirectorySuite) TestCreateGetUnderlayerDirectory() {
+	// Create a directory
+	_, err := suite.Directory.CreateDirectory(context.Background(), "dir")
+	suite.Require().NoError(err)
 
 	// Read the directory in the underlayer
 	_, err = suite.Underlayer.GetDirectory(context.Background(), "dir")
@@ -76,8 +83,6 @@ func (suite *DirectorySuite) TestRemoveDirectory() {
 	err = suite.Directory.RemoveDirectory(context.Background(), "dir")
 	suite.Require().NoError(err)
 
-	// -- Directory
-
 	// Check if the directory is removed
 	_, err = suite.Directory.GetDirectory(context.Background(), "dir")
 	suite.Require().ErrorIs(err, storage.ErrDirectoryNotExists)
@@ -86,8 +91,17 @@ func (suite *DirectorySuite) TestRemoveDirectory() {
 	dirs, err := suite.Directory.ListDirectories(context.Background())
 	suite.Require().NoError(err)
 	suite.Require().Len(dirs, 0)
+}
 
-	// -- Underlayer
+// TestRemoveDirectoryAndCheckUnderlayer tests removing a directory is passed to underlayer.
+func (suite *DirectorySuite) TestRemoveDirectoryAndCheckUnderlayer() {
+	// Create a directory
+	_, err := suite.Directory.CreateDirectory(context.Background(), "dir")
+	suite.Require().NoError(err)
+
+	// Remove the directory
+	err = suite.Directory.RemoveDirectory(context.Background(), "dir")
+	suite.Require().NoError(err)
 
 	// Check if the directory is removed in the underlayer
 	_, err = suite.Underlayer.GetDirectory(context.Background(), "dir")
@@ -109,8 +123,6 @@ func (suite *DirectorySuite) TestRenameDirectory() {
 	err = suite.Directory.RenameDirectory(context.Background(), "dir", suite.Directory, "newdir", false)
 	suite.Require().NoError(err)
 
-	// -- Directory
-
 	// Check if the directory is renamed
 	dir, err := suite.Directory.GetDirectory(context.Background(), "newdir")
 	suite.Require().NoError(err)
@@ -119,8 +131,17 @@ func (suite *DirectorySuite) TestRenameDirectory() {
 	// Check if the old directory is removed
 	_, err = suite.Directory.GetDirectory(context.Background(), "dir")
 	suite.Require().ErrorIs(err, storage.ErrDirectoryNotExists)
+}
 
-	// -- Underlayer
+// TestRenameDirectoryAndCheckUnderlayer tests renaming a directory is passed to underlayer.
+func (suite *DirectorySuite) TestRenameDirectoryAndCheckUnderlayer() {
+	// Create a directory
+	_, err := suite.Directory.CreateDirectory(context.Background(), "dir")
+	suite.Require().NoError(err)
+
+	// Rename the directory
+	err = suite.Directory.RenameDirectory(context.Background(), "dir", suite.Directory, "newdir", false)
+	suite.Require().NoError(err)
 
 	// Check if the directory is renamed in the underlayer
 	udir, err := suite.Underlayer.GetDirectory(context.Background(), "newdir")
@@ -140,6 +161,13 @@ func (suite *DirectorySuite) TestCreateGetFile() {
 
 	// Read the file
 	_, err = suite.Directory.GetFile(context.Background(), "file")
+	suite.Require().NoError(err)
+}
+
+// TestCreateGetFileUnderlayer tests creating and getting a file from underlayer.
+func (suite *DirectorySuite) TestCreateGetFileUnderlayer() {
+	// Create a file
+	_, err := suite.Directory.CreateFile(context.Background(), "file", 1)
 	suite.Require().NoError(err)
 
 	// Read the file in the underlayer
@@ -187,8 +215,6 @@ func (suite *DirectorySuite) TestRemoveFile() {
 	err = suite.Directory.RemoveFile(context.Background(), "file")
 	suite.Require().NoError(err)
 
-	// -- Directory
-
 	// Check if the file is removed
 	_, err = suite.Directory.GetFile(context.Background(), "file")
 	suite.Require().ErrorIs(err, storage.ErrFileNotExists)
@@ -197,8 +223,17 @@ func (suite *DirectorySuite) TestRemoveFile() {
 	files, err := suite.Directory.ListFiles(context.Background())
 	suite.Require().NoError(err)
 	suite.Require().Len(files, 0)
+}
 
-	// -- Underlayer
+// TestRemoveFileAndCheckUnderlayer tests removing a file is passed ti underlayer.
+func (suite *DirectorySuite) TestRemoveFileAndCheckUnderlayer() {
+	// Create a file
+	_, err := suite.Directory.CreateFile(context.Background(), "file", 1)
+	suite.Require().NoError(err)
+
+	// Remove the file
+	err = suite.Directory.RemoveFile(context.Background(), "file")
+	suite.Require().NoError(err)
 
 	// Check if the file is removed in the underlayer
 	_, err = suite.Underlayer.GetFile(context.Background(), "file")
@@ -220,8 +255,6 @@ func (suite *DirectorySuite) TestRenameFile() {
 	err = suite.Directory.RenameFile(context.Background(), "file", suite.Directory, "newfile", false)
 	suite.Require().NoError(err)
 
-	// -- Directory
-
 	// Check if the file is renamed
 	file, err := suite.Directory.GetFile(context.Background(), "newfile")
 	suite.Require().NoError(err)
@@ -230,8 +263,17 @@ func (suite *DirectorySuite) TestRenameFile() {
 	// Check if the old file is removed
 	_, err = suite.Directory.GetFile(context.Background(), "file")
 	suite.Require().ErrorIs(err, storage.ErrFileNotExists)
+}
 
-	// - Underlayer
+// TestRenameFileAndCheckUnderlayer tests renaming a file is passed to underlayer.
+func (suite *DirectorySuite) TestRenameFileAndCheckUnderlayer() {
+	// Create a file
+	_, err := suite.Directory.CreateFile(context.Background(), "file", 4096)
+	suite.Require().NoError(err)
+
+	// Rename the file
+	err = suite.Directory.RenameFile(context.Background(), "file", suite.Directory, "newfile", false)
+	suite.Require().NoError(err)
 
 	// Check if the file is renamed in the underlayer
 	ufile, err := suite.Underlayer.GetFile(context.Background(), "newfile")
