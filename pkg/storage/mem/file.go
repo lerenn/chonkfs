@@ -7,6 +7,8 @@ import (
 	"github.com/lerenn/chonkfs/pkg/storage"
 )
 
+var _ storage.File = (*file)(nil)
+
 type fileOptions struct {
 	Underlayer storage.File
 }
@@ -25,6 +27,7 @@ func newFile(chunkSize int, opts *fileOptions) *file {
 	}
 }
 
+// Underlayer returns the underlayer file.
 func (f *file) Underlayer() storage.File {
 	if f.opts == nil {
 		return nil
