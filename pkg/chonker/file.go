@@ -79,38 +79,33 @@ func (f *file) Read(ctx context.Context, dest []byte, off int) ([]byte, error) {
 //
 //nolint:cyclop
 func (f *file) readAccrossChunks(ctx context.Context, dest []byte, off int) ([]byte, error) {
-	// Get the total number of chunks
-	totalChunk, err := f.underlayer.ChunksCount(ctx)
+	// Get info from the underlayer
+	info, err := f.underlayer.Info(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	// Check if the offset is valid
 	chunkNb := off / f.chunkSize
-	if chunkNb >= totalChunk {
+	if chunkNb >= info.ChunksCount {
 		return []byte{}, nil
-	} else if chunkNb == totalChunk-1 {
-		ls, err := f.underlayer.LastChunkSize(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		if off%f.chunkSize >= ls {
+	} else if chunkNb == info.ChunksCount-1 {
+		if off%f.chunkSize >= info.LastChunkSize {
 			return []byte{}, nil
 		}
 	}
 
 	// Loop across chunks
 	read := 0
-	for ; read < len(dest) && chunkNb < totalChunk; chunkNb++ {
+	for ; read < len(dest) && chunkNb < info.ChunksCount; chunkNb++ {
 		if read == 0 {
-			r, err := f.underlayer.ReadChunk(ctx, chunkNb, dest, off%f.chunkSize, nil)
+			r, err := f.underlayer.ReadChunk(ctx, chunkNb, dest, off%f.chunkSize)
 			if err != nil {
 				return nil, err
 			}
 			read += r
 		} else {
-			r, err := f.underlayer.ReadChunk(ctx, chunkNb, dest[read:], 0, nil)
+			r, err := f.underlayer.ReadChunk(ctx, chunkNb, dest[read:], 0)
 			if err != nil {
 				return nil, err
 			}
@@ -254,8 +249,8 @@ func (f *file) resizeChunks(ctx context.Context, newSize int) error {
 }
 
 func (f *file) makeLastChunkFullOrLess(ctx context.Context, oldSize int, newSize *int) error {
-	// Get chunk count
-	chunkNb, err := f.underlayer.ChunksCount(ctx)
+	// Get info
+	info, err := f.underlayer.Info(ctx)
 	if err != nil {
 		return err
 	}
@@ -265,7 +260,7 @@ func (f *file) makeLastChunkFullOrLess(ctx context.Context, oldSize int, newSize
 
 	// However, if the total size is smaller than the chunk size, resize to the total size
 	if *newSize-oldSize < f.chunkSize {
-		resize = *newSize - (chunkNb-1)*f.chunkSize
+		resize = *newSize - (info.ChunksCount-1)*f.chunkSize
 	}
 
 	// Resize the last chunk
@@ -286,13 +281,13 @@ func (f *file) writeAccrossChunks(ctx context.Context, data []byte, off int) (wr
 
 	for chunkNb := off / f.chunkSize; written < len(data) && chunkNb < size; chunkNb++ {
 		if written == 0 {
-			w, err := f.underlayer.WriteChunk(ctx, chunkNb, off%f.chunkSize, nil, data)
+			w, err := f.underlayer.WriteChunk(ctx, chunkNb, data, off%f.chunkSize)
 			if err != nil {
 				return 0, err
 			}
 			written += w
 		} else {
-			w, err := f.underlayer.WriteChunk(ctx, chunkNb, 0, nil, data[written:])
+			w, err := f.underlayer.WriteChunk(ctx, chunkNb, data[written:], 0)
 			if err != nil {
 				return 0, err
 			}

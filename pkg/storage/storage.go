@@ -35,11 +35,9 @@ type DirectoryInfo struct {
 // File represents a file in the storage.
 type File interface {
 	Size(ctx context.Context) (int, error)
-	WriteChunk(ctx context.Context, chunkIndex int, start int, end *int, data []byte) (int, error)
-	ReadChunk(ctx context.Context, chunkIndex int, data []byte, start int, end *int) (int, error)
-	ChunksCount(ctx context.Context) (int, error)
+	WriteChunk(ctx context.Context, chunkIndex int, data []byte, offset int) (int, error)
+	ReadChunk(ctx context.Context, chunkIndex int, data []byte, offset int) (int, error)
 	ResizeChunksNb(ctx context.Context, size int) error
-	LastChunkSize(ctx context.Context) (int, error)
 	ResizeLastChunk(ctx context.Context, size int) (changed int, err error)
 	Info(ctx context.Context) (FileInfo, error)
 	Underlayer() File
@@ -47,5 +45,7 @@ type File interface {
 
 // FileInfo represents the information of a file.
 type FileInfo struct {
-	ChunkSize int
+	ChunkSize     int
+	ChunksCount   int
+	LastChunkSize int
 }

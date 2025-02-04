@@ -16,23 +16,23 @@ type DirectoryOptions struct {
 
 // Directory is a directory on disk.
 type Directory struct {
-	opts *DirectoryOptions
+	underlayer storage.Directory
 }
 
 // NewDirectory creates a new directory.
 func NewDirectory(opts *DirectoryOptions) *Directory {
-	return &Directory{
-		opts: opts,
+	d := &Directory{}
+
+	if opts != nil {
+		d.underlayer = opts.Underlayer
 	}
+
+	return d
 }
 
 // Underlayer returns the directory underlayer.
 func (d *Directory) Underlayer() storage.Directory {
-	if d.opts == nil {
-		return nil
-	}
-
-	return d.opts.Underlayer
+	return d.underlayer
 }
 
 // CreateDirectory creates a directory.
@@ -77,10 +77,6 @@ func (d *Directory) RemoveDirectory(_ context.Context, _ string) error {
 
 // RemoveFile removes a child file of the directory.
 func (d *Directory) RemoveFile(_ context.Context, _ string) error {
-	return fmt.Errorf("not implemented")
-}
-
-func (d *Directory) checkIfFileOrDirectoryAlreadyExists(_ string) error {
 	return fmt.Errorf("not implemented")
 }
 

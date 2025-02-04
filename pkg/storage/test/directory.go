@@ -382,63 +382,63 @@ func (suite *DirectorySuite) TestRemoveFileAndCheckUnderlayer() {
 	suite.Require().Len(ufiles, 0)
 }
 
-// // TestRenameFile tests renaming a file.
-// func (suite *DirectorySuite) TestRenameFile() {
-// 	// Create a file
-// 	_, err := suite.Directory.CreateFile(context.Background(), "file", 4096)
-// 	suite.Require().NoError(err)
+// TestRenameFile tests renaming a file.
+func (suite *DirectorySuite) TestRenameFile() {
+	// Create a file
+	_, err := suite.Directory.CreateFile(context.Background(), "file", 4096)
+	suite.Require().NoError(err)
 
-// 	// Rename the file
-// 	err = suite.Directory.RenameFile(context.Background(), "file", suite.Directory, "newfile", false)
-// 	suite.Require().NoError(err)
+	// Rename the file
+	err = suite.Directory.RenameFile(context.Background(), "file", suite.Directory, "newfile", false)
+	suite.Require().NoError(err)
 
-// 	// Check if the file is renamed
-// 	file, err := suite.Directory.GetFile(context.Background(), "newfile")
-// 	suite.Require().NoError(err)
-// 	suite.Require().NotNil(file)
+	// Check if the file is renamed
+	file, err := suite.Directory.GetFile(context.Background(), "newfile")
+	suite.Require().NoError(err)
+	suite.Require().NotNil(file)
 
-// 	// Check if the old file is removed
-// 	_, err = suite.Directory.GetFile(context.Background(), "file")
-// 	suite.Require().ErrorIs(err, storage.ErrFileNotExists)
-// }
+	// Check if the old file is removed
+	_, err = suite.Directory.GetFile(context.Background(), "file")
+	suite.Require().ErrorIs(err, storage.ErrFileNotExists)
+}
 
-// // TestRenameFileAndCheckUnderlayer tests renaming a file is passed to underlayer.
-// func (suite *DirectorySuite) TestRenameFileAndCheckUnderlayer() {
-// 	// Create a file
-// 	_, err := suite.Directory.CreateFile(context.Background(), "file", 4096)
-// 	suite.Require().NoError(err)
+// TestRenameFileAndCheckUnderlayer tests renaming a file is passed to underlayer.
+func (suite *DirectorySuite) TestRenameFileAndCheckUnderlayer() {
+	// Create a file
+	_, err := suite.Directory.CreateFile(context.Background(), "file", 4096)
+	suite.Require().NoError(err)
 
-// 	// Rename the file
-// 	err = suite.Directory.RenameFile(context.Background(), "file", suite.Directory, "newfile", false)
-// 	suite.Require().NoError(err)
+	// Rename the file
+	err = suite.Directory.RenameFile(context.Background(), "file", suite.Directory, "newfile", false)
+	suite.Require().NoError(err)
 
-// 	// Check if the file is renamed in the underlayer
-// 	ufile, err := suite.Underlayer.GetFile(context.Background(), "newfile")
-// 	suite.Require().NoError(err)
-// 	suite.Require().NotNil(ufile)
+	// Check if the file is renamed in the underlayer
+	ufile, err := suite.Underlayer.GetFile(context.Background(), "newfile")
+	suite.Require().NoError(err)
+	suite.Require().NotNil(ufile)
 
-// 	// Check if the old file is removed in the underlayer
-// 	_, err = suite.Underlayer.GetFile(context.Background(), "file")
-// 	suite.Require().ErrorIs(err, storage.ErrFileNotExists)
-// }
+	// Check if the old file is removed in the underlayer
+	_, err = suite.Underlayer.GetFile(context.Background(), "file")
+	suite.Require().ErrorIs(err, storage.ErrFileNotExists)
+}
 
 // TestRenameFileThatExistOnlyOnUnderlayer checks that when a directory
 // that only exists on the underlayer, then it is renamed and present above
-// func (suite *DirectorySuite) TestRenameFileThatExistOnlyOnUnderlayer() {
-// 	// Create a directory on the underlayer
-// 	_, err := suite.Underlayer.CreateFile(context.Background(), "file", 4096)
-// 	suite.Require().NoError(err)
+func (suite *DirectorySuite) TestRenameFileThatExistOnlyOnUnderlayer() {
+	// Create a directory on the underlayer
+	_, err := suite.Underlayer.CreateFile(context.Background(), "file", 4096)
+	suite.Require().NoError(err)
 
-// 	// Rename the directory
-// 	err = suite.Directory.RenameFile(context.Background(), "file", suite.Directory, "newfile", false)
-// 	suite.Require().NoError(err)
+	// Rename the directory
+	err = suite.Directory.RenameFile(context.Background(), "file", suite.Directory, "newfile", false)
+	suite.Require().NoError(err)
 
-// 	// Check if the directory is renamed
-// 	dir, err := suite.Directory.GetFile(context.Background(), "newfile")
-// 	suite.Require().NoError(err)
-// 	suite.Require().NotNil(dir)
+	// Check if the directory is renamed
+	dir, err := suite.Directory.GetFile(context.Background(), "newfile")
+	suite.Require().NoError(err)
+	suite.Require().NotNil(dir)
 
-// 	// Check if the old directory is removed
-// 	_, err = suite.Directory.GetFile(context.Background(), "file")
-// 	suite.Require().ErrorIs(err, storage.ErrDirectoryNotExists)
-// }
+	// Check if the old directory is removed
+	_, err = suite.Directory.GetFile(context.Background(), "file")
+	suite.Require().ErrorIs(err, storage.ErrFileNotExists)
+}

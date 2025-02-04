@@ -2,7 +2,6 @@ package disk
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path"
 
@@ -23,28 +22,29 @@ type DirectoryOptions struct {
 
 // Directory is a directory on disk.
 type Directory struct {
-	path string
-	opts *DirectoryOptions
+	path       string
+	underlayer storage.Directory
 }
 
 // NewDirectory creates a new directory.
 func NewDirectory(path string, opts *DirectoryOptions) *Directory {
-	return &Directory{
+	d := &Directory{
 		path: path,
-		opts: opts,
 	}
+
+	if opts != nil {
+		d.underlayer = opts.Underlayer
+	}
+
+	return d
 }
 
 // Underlayer returns the directory underlayer.
 func (d *Directory) Underlayer() storage.Directory {
-	if d.opts == nil {
-		return nil
-	}
-
-	return d.opts.Underlayer
+	return d.underlayer
 }
 
-func (d *Directory) createLocalDirectory(name string, underlayer storage.Directory) (storage.Directory, error) {
+func (d *Directory) createDirectoryInLayer(name string, underlayer storage.Directory) (storage.Directory, error) {
 	// Create a directory on disk
 	childPath := path.Join(d.path, name)
 	if err := os.Mkdir(childPath, defaultDirMode); err != nil {
@@ -73,7 +73,7 @@ func (d *Directory) CreateDirectory(ctx context.Context, name string) (storage.D
 	}
 
 	// Create local directory
-	return d.createLocalDirectory(name, childUnderlayer)
+	return d.createDirectoryInLayer(name, childUnderlayer)
 }
 
 // Info returns the directory info.
@@ -81,7 +81,7 @@ func (d *Directory) Info(_ context.Context) (storage.DirectoryInfo, error) {
 	return storage.DirectoryInfo{}, nil
 }
 
-func (d *Directory) listLocalFiles(ctx context.Context) (map[string]storage.File, error) {
+func (d *Directory) listFilesInLayer(ctx context.Context) (map[string]storage.File, error) {
 	// Get the entries
 	entries, err := os.ReadDir(d.path)
 	if err != nil {
@@ -125,7 +125,7 @@ func (d *Directory) listLocalFiles(ctx context.Context) (map[string]storage.File
 // ListFiles returns a map of files.
 func (d *Directory) ListFiles(ctx context.Context) (map[string]storage.File, error) {
 	// Get local directories
-	files, err := d.listLocalFiles(ctx)
+	files, err := d.listFilesInLayer(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +151,7 @@ func (d *Directory) ListFiles(ctx context.Context) (map[string]storage.File, err
 			}
 
 			// Create it if they are not
-			nf, err := d.createLocalFile(n, fi.ChunkSize, uf)
+			nf, err := d.createFileInLayer(n, uf, fi)
 			if err != nil {
 				return nil, err
 			}
@@ -168,28 +168,42 @@ func (d *Directory) GetDirectory(ctx context.Context, name string) (storage.Dire
 	var childUnderlayer storage.Directory
 	var err error
 
-	// Check the directory exists
+	// Check the directory exists on underlayer
 	childPath := path.Join(d.path, name)
-	if u := d.Underlayer(); u != nil {
+	underlayer := d.Underlayer()
+	if underlayer != nil {
 		// If there is an underlayer, then gets it here, it will check for it
-		childUnderlayer, err = u.GetDirectory(ctx, name)
+		childUnderlayer, err = underlayer.GetDirectory(ctx, name)
 		if err != nil {
 			return nil, err
 		}
-	} else if _, err := os.Stat(childPath); os.IsNotExist(err) {
-		// If there is no underlayer and no directory, then return error
-		return nil, storage.ErrDirectoryNotExists
-	} else if err != nil {
+	}
+
+	// Check if it exists locally
+	_, err = os.Stat(childPath)
+	if err != nil && !os.IsNotExist(err) {
 		// If there is no underlayer and an error, return it
 		return nil, err
 	}
 
+	// If the directory doesn't exist
+	if os.IsNotExist(err) {
+		if underlayer != nil {
+			// If there is an underlayer and no directory, then create it
+			return d.createDirectoryInLayer(name, childUnderlayer)
+		} else {
+			// If there is no underlayer and no directory, then return error
+			return nil, storage.ErrDirectoryNotExists
+		}
+	}
+
+	// If it exists, return it
 	return NewDirectory(childPath, &DirectoryOptions{
 		Underlayer: childUnderlayer,
 	}), nil
 }
 
-func (d *Directory) getFileLocally(path string, underlayer storage.File) (storage.File, error) {
+func (d *Directory) getFileInLayer(path string, underlayer storage.File) (storage.File, error) {
 	// Get info
 	fi, err := readFileInfo(path)
 	if err != nil {
@@ -198,7 +212,7 @@ func (d *Directory) getFileLocally(path string, underlayer storage.File) (storag
 
 	return newFile(path, fi.ChunkSize, &fileOptions{
 		Underlayer: underlayer,
-	}), nil
+	})
 }
 
 // GetFile returns a child file.
@@ -206,36 +220,46 @@ func (d *Directory) GetFile(ctx context.Context, name string) (storage.File, err
 	var childUnderlayer storage.File
 	var err error
 
-	// Check the directory exists
+	// Check the file exists on underlayer and get it
 	childPath := path.Join(d.path, name)
-	if u := d.Underlayer(); u != nil {
+	underlayer := d.Underlayer()
+	if underlayer != nil {
 		// If there is an underlayer, then gets it here, it will check for it
-		childUnderlayer, err = u.GetFile(ctx, name)
+		childUnderlayer, err = underlayer.GetFile(ctx, name)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	// Check the file exists
+	// Check if it exists locally
 	_, err = os.Stat(childPath)
-	if err == nil {
-		return d.getFileLocally(childPath, childUnderlayer)
-	} else if !os.IsNotExist(err) {
+	if err != nil && !os.IsNotExist(err) {
+		// If there is no underlayer and an error, return it
 		return nil, err
 	}
 
-	// Get info from underlayer
-	info, err := childUnderlayer.Info(ctx)
-	if err != nil {
-		return nil, err
+	// If the file doesn't exist
+	if os.IsNotExist(err) {
+		if underlayer != nil {
+			// Get information from underlayer
+			fi, err := childUnderlayer.Info(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			// If there is an underlayer and no directory, then create it
+			return d.createFileInLayer(name, childUnderlayer, fi)
+		} else {
+			// If there is no underlayer and no directory, then return error
+			return nil, storage.ErrDirectoryNotExists
+		}
 	}
 
-	return newFile(childPath, info.ChunkSize, &fileOptions{
-		Underlayer: childUnderlayer,
-	}), nil
+	// If it exists, return it
+	return d.getFileInLayer(childPath, childUnderlayer)
 }
 
-func (d *Directory) listLocalDirectories(ctx context.Context) (map[string]storage.Directory, error) {
+func (d *Directory) listDirectoriesInLayer(ctx context.Context) (map[string]storage.Directory, error) {
 	// Get the entries
 	entries, err := os.ReadDir(d.path)
 	if err != nil {
@@ -278,7 +302,7 @@ func (d *Directory) listLocalDirectories(ctx context.Context) (map[string]storag
 // ListDirectories returns a map of directories.
 func (d *Directory) ListDirectories(ctx context.Context) (map[string]storage.Directory, error) {
 	// Get local directories
-	dirs, err := d.listLocalDirectories(ctx)
+	dirs, err := d.listDirectoriesInLayer(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -298,7 +322,7 @@ func (d *Directory) ListDirectories(ctx context.Context) (map[string]storage.Dir
 			}
 
 			// Create it if they are not
-			nd, err := d.createLocalDirectory(n, ud)
+			nd, err := d.createDirectoryInLayer(n, ud)
 			if err != nil {
 				return nil, err
 			}
@@ -310,10 +334,10 @@ func (d *Directory) ListDirectories(ctx context.Context) (map[string]storage.Dir
 	return dirs, nil
 }
 
-func (d *Directory) createLocalFile(
+func (d *Directory) createFileInLayer(
 	name string,
-	chunkSize int,
 	underlayer storage.File,
+	fi storage.FileInfo,
 ) (storage.File, error) {
 	// Create a directory on disk that represent the file
 	childPath := path.Join(d.path, name)
@@ -322,14 +346,17 @@ func (d *Directory) createLocalFile(
 	}
 
 	// Create a new file
-	f := newFile(childPath, chunkSize, &fileOptions{
-		Underlayer: underlayer,
+	f, err := newFile(childPath, fi.ChunkSize, &fileOptions{
+		Underlayer:    underlayer,
+		ChunkNb:       fi.ChunksCount,
+		LastChunkSize: fi.LastChunkSize,
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	// Write the info and return
-	return f, writeFileInfo(storage.FileInfo{
-		ChunkSize: chunkSize,
-	}, childPath)
+	return f, writeFileInfo(fi, childPath)
 }
 
 // CreateFile creates a file in the directory.
@@ -346,7 +373,9 @@ func (d *Directory) CreateFile(ctx context.Context, name string, chunkSize int) 
 	}
 
 	// Create the file on the disk
-	return d.createLocalFile(name, chunkSize, childUnderlayer)
+	return d.createFileInLayer(name, childUnderlayer, storage.FileInfo{
+		ChunkSize: chunkSize,
+	})
 }
 
 // RemoveDirectory removes a child directory of the directory.
@@ -375,19 +404,31 @@ func (d *Directory) RemoveFile(ctx context.Context, name string) error {
 	return os.RemoveAll(path.Join(d.path, name))
 }
 
-func (d *Directory) checkIfFileOrDirectoryAlreadyExists(_ string) error {
-	return fmt.Errorf("not implemented")
-}
-
 // RenameFile renames a child file of the directory.
 func (d *Directory) RenameFile(
-	_ context.Context,
-	_ string,
-	_ storage.Directory,
-	_ string,
-	_ bool,
+	ctx context.Context,
+	name string,
+	newParent storage.Directory,
+	newName string,
+	noReplace bool,
 ) error {
-	return fmt.Errorf("not implemented")
+	// Get file
+	_, err := d.GetFile(ctx, name)
+	if err != nil {
+		return err
+	}
+
+	// If there is an underlayer, then rename the file here first
+	if u := d.Underlayer(); u != nil {
+		if err := u.RenameFile(ctx, name, newParent.Underlayer(), newName, noReplace); err != nil {
+			return err
+		}
+	}
+
+	// Rename on the disk
+	oldPath := path.Join(d.path, name)
+	newPath := path.Join(newParent.(*Directory).path, newName)
+	return os.Rename(oldPath, newPath)
 }
 
 // RenameDirectory renames a child directory of the directory.
@@ -398,6 +439,12 @@ func (d *Directory) RenameDirectory(
 	newName string,
 	noReplace bool,
 ) error {
+	// Get directory
+	_, err := d.GetDirectory(ctx, name)
+	if err != nil {
+		return err
+	}
+
 	// If there is an underlayer, then rename the directory here first
 	if u := d.Underlayer(); u != nil {
 		if err := u.RenameDirectory(ctx, name, newParent.Underlayer(), newName, noReplace); err != nil {

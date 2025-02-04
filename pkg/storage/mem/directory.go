@@ -19,25 +19,26 @@ type DirectoryOptions struct {
 type Directory struct {
 	directories map[string]*Directory
 	files       map[string]*file
-	opts        *DirectoryOptions
+	underlayer  storage.Directory
 }
 
 // NewDirectory creates a new directory.
 func NewDirectory(opts *DirectoryOptions) *Directory {
-	return &Directory{
+	d := &Directory{
 		directories: make(map[string]*Directory),
 		files:       make(map[string]*file),
-		opts:        opts,
 	}
+
+	if opts != nil {
+		d.underlayer = opts.Underlayer
+	}
+
+	return d
 }
 
 // Underlayer returns the directory underlayer.
 func (d *Directory) Underlayer() storage.Directory {
-	if d.opts == nil {
-		return nil
-	}
-
-	return d.opts.Underlayer
+	return d.underlayer
 }
 
 // CreateDirectory creates a directory.
@@ -165,7 +166,9 @@ func (d *Directory) GetFile(ctx context.Context, name string) (storage.File, err
 
 		// Add it to the memory if it exists
 		file := newFile(fi.ChunkSize, &fileOptions{
-			Underlayer: childUnderlayer,
+			Underlayer:    childUnderlayer,
+			ChunkNb:       fi.ChunksCount,
+			LastChunkSize: fi.LastChunkSize,
 		})
 		d.files[name] = file
 
@@ -285,17 +288,10 @@ func (d *Directory) RenameFile(
 	newName string,
 	noReplace bool,
 ) error {
-	// If there is an underlayer, then rename the file here first
-	if u := d.Underlayer(); u != nil {
-		if err := u.RenameFile(ctx, name, newParent.Underlayer(), newName, noReplace); err != nil {
-			return err
-		}
-	}
-
-	// Get the directory or the file
-	f, fileExist := d.files[name]
-	if !fileExist {
-		return storage.ErrFileNotExists
+	// Get the the file
+	f, err := d.GetFile(ctx, name)
+	if err != nil {
+		return err
 	}
 
 	// Check if it doesn't not exist already
@@ -309,8 +305,15 @@ func (d *Directory) RenameFile(
 		}
 	}
 
+	// If there is an underlayer, then rename the file here first
+	if u := d.Underlayer(); u != nil {
+		if err := u.RenameFile(ctx, name, newParent.Underlayer(), newName, noReplace); err != nil {
+			return err
+		}
+	}
+
 	// Add it to new parent and remove it from current parent
-	newParent.(*Directory).files[newName] = f
+	newParent.(*Directory).files[newName] = f.(*file)
 	delete(d.files, name)
 
 	return nil
@@ -324,17 +327,10 @@ func (d *Directory) RenameDirectory(
 	newName string,
 	noReplace bool,
 ) error {
-	// If there is an underlayer, then rename the directory here first
-	if u := d.Underlayer(); u != nil {
-		if err := u.RenameDirectory(ctx, name, newParent.Underlayer(), newName, noReplace); err != nil {
-			return err
-		}
-	}
-
-	// Get the directory or the file
-	dir, dirExist := d.directories[name]
-	if !dirExist {
-		return storage.ErrFileNotExists
+	// Get directory
+	dir, err := d.GetDirectory(ctx, name)
+	if err != nil {
+		return err
 	}
 
 	// Check if it doesn't not exist already
@@ -348,8 +344,15 @@ func (d *Directory) RenameDirectory(
 		}
 	}
 
+	// If there is an underlayer, then rename the directory here first
+	if u := d.Underlayer(); u != nil {
+		if err := u.RenameDirectory(ctx, name, newParent.Underlayer(), newName, noReplace); err != nil {
+			return err
+		}
+	}
+
 	// Add it to new parent and remove it from current parent
-	newParent.(*Directory).directories[newName] = dir
+	newParent.(*Directory).directories[newName] = dir.(*Directory)
 	delete(d.directories, name)
 
 	return nil
