@@ -8,7 +8,8 @@ import (
 
 	"github.com/hanwen/go-fuse/v2/fs"
 	"github.com/lerenn/chonkfs/pkg/chonker"
-	"github.com/lerenn/chonkfs/pkg/storage/mem"
+	"github.com/lerenn/chonkfs/pkg/storage"
+	"github.com/lerenn/chonkfs/pkg/storage/backend/mem"
 	"github.com/lerenn/chonkfs/pkg/wrapper"
 	"github.com/spf13/cobra"
 )
@@ -41,7 +42,7 @@ var rootCmd = &cobra.Command{
 		// Create chonker
 		c, err := chonker.NewDirectory(
 			cmd.Context(),
-			mem.NewDirectory(nil),
+			storage.NewDirectory(mem.NewBackEnd(), nil),
 			chonker.WithDirectoryLogger(logger))
 		if err != nil {
 			return err

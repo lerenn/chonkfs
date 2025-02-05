@@ -10,7 +10,8 @@ import (
 	"github.com/hanwen/go-fuse/v2/fs"
 	"github.com/hanwen/go-fuse/v2/fuse"
 	"github.com/lerenn/chonkfs/pkg/chonker"
-	"github.com/lerenn/chonkfs/pkg/storage/mem"
+	"github.com/lerenn/chonkfs/pkg/storage"
+	"github.com/lerenn/chonkfs/pkg/storage/backend/mem"
 	"github.com/lerenn/chonkfs/pkg/wrapper"
 	"github.com/stretchr/testify/suite"
 )
@@ -68,7 +69,7 @@ func (suite *Suite) createChonkFS(
 
 func (suite *Suite) TestWriteOnlyThenReadOnly() {
 	// Mount chunkfs
-	c, err := chonker.NewDirectory(context.Background(), mem.NewDirectory(nil))
+	c, err := chonker.NewDirectory(context.Background(), storage.NewDirectory(mem.NewBackEnd(), nil))
 	suite.Require().NoError(err)
 	path, srv := suite.createChonkFS(c, 4096)
 
@@ -116,7 +117,7 @@ func (suite *Suite) TestWriteOnlyThenReadOnly() {
 
 func (suite *Suite) TestReadWriteMode() {
 	// Mount chunkfs
-	c, err := chonker.NewDirectory(context.Background(), mem.NewDirectory(nil))
+	c, err := chonker.NewDirectory(context.Background(), storage.NewDirectory(mem.NewBackEnd(), nil))
 	suite.Require().NoError(err)
 	path, srv := suite.createChonkFS(c, 4096)
 
@@ -154,7 +155,7 @@ func (suite *Suite) TestReadWriteMode() {
 
 func (suite *Suite) TestRandomReadWrite() {
 	// Mount chunkfs
-	c, err := chonker.NewDirectory(context.Background(), mem.NewDirectory(nil))
+	c, err := chonker.NewDirectory(context.Background(), storage.NewDirectory(mem.NewBackEnd(), nil))
 	suite.Require().NoError(err)
 	path, srv := suite.createChonkFS(c, 4096)
 

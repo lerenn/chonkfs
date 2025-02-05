@@ -1,26 +1,28 @@
-package skeleton
+package storage
 
 import (
 	"context"
 	"fmt"
 
-	"github.com/lerenn/chonkfs/pkg/storage"
+	"github.com/lerenn/chonkfs/pkg/storage/backend"
 )
 
-var _ storage.File = (*file)(nil)
+var _ File = (*file)(nil)
 
 type fileOptions struct {
-	Underlayer storage.File
+	Underlayer File
 }
 
 type file struct {
 	chunkSize  int
-	underlayer storage.File
+	backend    backend.BackEnd
+	underlayer File
 }
 
-func newFile(chunkSize int, opts *fileOptions) *file {
+func newFile(backend backend.BackEnd, chunkSize int, opts *fileOptions) *file {
 	f := &file{
 		chunkSize: chunkSize,
+		backend:   backend,
 	}
 
 	if opts != nil {
@@ -31,13 +33,13 @@ func newFile(chunkSize int, opts *fileOptions) *file {
 }
 
 // Underlayer returns the underlayer file.
-func (f *file) Underlayer() storage.File {
+func (f *file) Underlayer() File {
 	return f.underlayer
 }
 
 // Info returns the file info.
-func (f *file) Info(_ context.Context) (storage.FileInfo, error) {
-	return storage.FileInfo{}, fmt.Errorf("not implemented")
+func (f *file) Info(_ context.Context) (FileInfo, error) {
+	return FileInfo{}, fmt.Errorf("not implemented")
 }
 
 // ReadChunk reads _ from a chunk.
