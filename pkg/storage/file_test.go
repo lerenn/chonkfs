@@ -46,7 +46,7 @@ func (suite *FileSuite) TestCreateFile() {
 	suite.Require().NoError(err)
 }
 
-func (suite *FileSuite) TestCreateFileAlreadyExists() {
+func (suite *FileSuite) TestCreateFileWhenFileAlreadyExists() {
 	// Create a directory
 	_, err := suite.Directory.CreateFile(context.Background(), "FileA", 4096)
 	suite.Require().NoError(err)
@@ -54,4 +54,14 @@ func (suite *FileSuite) TestCreateFileAlreadyExists() {
 	// Create the same directory again
 	_, err = suite.Directory.CreateFile(context.Background(), "FileA", 4096)
 	suite.Require().ErrorIs(err, storage.ErrFileAlreadyExists)
+}
+
+func (suite *FileSuite) TestCreateFileWhenDirectoryAlreadyExists() {
+	// Create a directory
+	_, err := suite.Directory.CreateDirectory(context.Background(), "DirectoryA")
+	suite.Require().NoError(err)
+
+	// Create a file with the same name
+	_, err = suite.Directory.CreateFile(context.Background(), "DirectoryA", 4096)
+	suite.Require().ErrorIs(err, storage.ErrDirectoryAlreadyExists)
 }

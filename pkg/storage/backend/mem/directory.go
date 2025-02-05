@@ -63,6 +63,11 @@ func (d *directory) IsDirectory(path string) error {
 	case 0:
 		return fmt.Errorf("%w: empty path", backend.ErrUnexpectedError)
 	case 1:
+		// Check if there is a file with this name
+		if _, ok := d.files[parts[0]]; ok {
+			return fmt.Errorf("%w: %q", backend.ErrIsFile, path)
+		}
+
 		// Check if there is a directory with this name
 		if _, ok := d.directories[parts[0]]; !ok {
 			return fmt.Errorf("%w: %q", backend.ErrNotFound, path)
@@ -132,6 +137,11 @@ func (d *directory) IsFile(path string) error {
 	case 0:
 		return fmt.Errorf("%w: empty path", backend.ErrUnexpectedError)
 	case 1:
+		// Check if there is a directory with this name
+		if _, ok := d.directories[parts[0]]; ok {
+			return fmt.Errorf("%w: %q", backend.ErrIsDirectory, path)
+		}
+
 		// Check if there is a file with this name
 		if _, ok := d.files[parts[0]]; !ok {
 			return fmt.Errorf("%w: %q", backend.ErrNotFound, path)

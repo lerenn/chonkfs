@@ -38,3 +38,11 @@ func (suite *BackEndSuite) TestCreateFileWithZeroChunkSize() {
 	err := suite.BackEnd.CreateFile(nil, "toto", 0)
 	suite.ErrorIs(err, backend.ErrInvalidChunkSize)
 }
+
+func (suite *BackEndSuite) TestIsFileWhenIsDirectory() {
+	err := suite.BackEnd.CreateDirectory(nil, "toto")
+	suite.NoError(err)
+
+	err = suite.BackEnd.IsFile(nil, "toto")
+	suite.ErrorIs(err, backend.ErrIsDirectory)
+}
