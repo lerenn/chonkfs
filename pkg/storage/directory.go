@@ -76,7 +76,7 @@ func (d *directory) CreateDirectory(ctx context.Context, name string) (Directory
 
 // Info returns the directory info.
 func (d *directory) Info(_ context.Context) (DirectoryInfo, error) {
-	return DirectoryInfo{}, fmt.Errorf("not implemented")
+	return DirectoryInfo{}, nil
 }
 
 // ListFiles returns a map of files.

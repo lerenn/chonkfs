@@ -65,3 +65,14 @@ func (suite *DirectorySuite) TestCreateDirectoryWhenFileAlreadyExists() {
 	_, err = suite.Directory.CreateDirectory(context.Background(), "test")
 	suite.Require().ErrorIs(err, storage.ErrFileAlreadyExists)
 }
+
+func (suite *DirectorySuite) TestInfo() {
+	// Create a directory
+	_, err := suite.Directory.CreateDirectory(context.Background(), "DirectoryA")
+	suite.Require().NoError(err)
+
+	// Get info
+	info, err := suite.Directory.Info(context.Background())
+	suite.Require().NoError(err)
+	suite.Require().Equal(storage.DirectoryInfo{}, info)
+}
