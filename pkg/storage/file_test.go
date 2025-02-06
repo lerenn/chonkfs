@@ -15,18 +15,18 @@ func TestFileSuite(t *testing.T) {
 }
 
 type FileSuite struct {
-	DirectoryBackEnd  backend.BackEnd
+	DirectoryBackEnd  backend.Directory
 	Directory         storage.Directory
-	UnderlayerBackEnd backend.BackEnd
+	UnderlayerBackEnd backend.Directory
 	Underlayer        storage.Directory
 	suite.Suite
 }
 
 func (suite *FileSuite) SetupTest() {
-	suite.UnderlayerBackEnd = mem.NewBackEnd()
+	suite.UnderlayerBackEnd = mem.NewDirectory()
 	suite.Underlayer = storage.NewDirectory(suite.UnderlayerBackEnd, nil)
 
-	suite.DirectoryBackEnd = mem.NewBackEnd()
+	suite.DirectoryBackEnd = mem.NewDirectory()
 	suite.Directory = storage.NewDirectory(suite.DirectoryBackEnd, &storage.DirectoryOptions{
 		Underlayer: suite.Underlayer,
 	})

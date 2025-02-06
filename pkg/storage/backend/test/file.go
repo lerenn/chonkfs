@@ -1,48 +1,48 @@
 package test
 
-import "github.com/lerenn/chonkfs/pkg/storage/backend"
+import (
+	"github.com/lerenn/chonkfs/pkg/storage/backend"
+	"github.com/stretchr/testify/suite"
+)
 
-func (suite *BackEndSuite) TestCreateFile() {
-	err := suite.BackEnd.CreateFile(nil, "toto", 4096)
+type FileSuite struct {
+	Directory backend.Directory
+	suite.Suite
+}
+
+func (suite *FileSuite) TestCreateFile() {
+	err := suite.Directory.CreateFile(nil, "toto", 4096)
 	suite.NoError(err)
 
-	err = suite.BackEnd.IsFile(nil, "toto")
+	err = suite.Directory.IsFile(nil, "toto")
 	suite.NoError(err)
 }
 
-func (suite *BackEndSuite) TestCreateFileWithExtraSlash() {
-	err := suite.BackEnd.CreateFile(nil, "/toto", 4096)
+func (suite *FileSuite) TestCreateFileOnExistingFile() {
+	err := suite.Directory.CreateFile(nil, "toto", 4096)
 	suite.NoError(err)
 
-	err = suite.BackEnd.IsFile(nil, "toto")
-	suite.NoError(err)
-}
-
-func (suite *BackEndSuite) TestCreateFileOnExistingFile() {
-	err := suite.BackEnd.CreateFile(nil, "toto", 4096)
-	suite.NoError(err)
-
-	err = suite.BackEnd.CreateFile(nil, "toto", 4096)
+	err = suite.Directory.CreateFile(nil, "toto", 4096)
 	suite.ErrorIs(err, backend.ErrFileAlreadyExists)
 }
 
-func (suite *BackEndSuite) TestCreateFileOnExistingDirectory() {
-	err := suite.BackEnd.CreateDirectory(nil, "toto")
+func (suite *FileSuite) TestCreateFileOnExistingDirectory() {
+	err := suite.Directory.CreateDirectory(nil, "toto")
 	suite.NoError(err)
 
-	err = suite.BackEnd.CreateFile(nil, "toto", 4096)
+	err = suite.Directory.CreateFile(nil, "toto", 4096)
 	suite.ErrorIs(err, backend.ErrDirectoryAlreadyExists)
 }
 
-func (suite *BackEndSuite) TestCreateFileWithZeroChunkSize() {
-	err := suite.BackEnd.CreateFile(nil, "toto", 0)
+func (suite *FileSuite) TestCreateFileWithZeroChunkSize() {
+	err := suite.Directory.CreateFile(nil, "toto", 0)
 	suite.ErrorIs(err, backend.ErrInvalidChunkSize)
 }
 
-func (suite *BackEndSuite) TestIsFileWhenIsDirectory() {
-	err := suite.BackEnd.CreateDirectory(nil, "toto")
+func (suite *FileSuite) TestIsFileWhenIsDirectory() {
+	err := suite.Directory.CreateDirectory(nil, "toto")
 	suite.NoError(err)
 
-	err = suite.BackEnd.IsFile(nil, "toto")
+	err = suite.Directory.IsFile(nil, "toto")
 	suite.ErrorIs(err, backend.ErrIsDirectory)
 }

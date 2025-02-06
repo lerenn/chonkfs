@@ -15,11 +15,11 @@ type DirectoryOptions struct {
 }
 
 type directory struct {
-	backend    backend.BackEnd
+	backend    backend.Directory
 	underlayer Directory
 }
 
-func NewDirectory(backend backend.BackEnd, opts *DirectoryOptions) *directory {
+func NewDirectory(backend backend.Directory, opts *DirectoryOptions) *directory {
 	d := &directory{
 		backend: backend,
 	}

@@ -15,11 +15,11 @@ type fileOptions struct {
 
 type file struct {
 	chunkSize  int
-	backend    backend.BackEnd
+	backend    backend.File
 	underlayer File
 }
 
-func newFile(backend backend.BackEnd, chunkSize int, opts *fileOptions) *file {
+func newFile(backend backend.File, chunkSize int, opts *fileOptions) *file {
 	f := &file{
 		chunkSize: chunkSize,
 		backend:   backend,

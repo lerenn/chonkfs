@@ -42,7 +42,7 @@ var rootCmd = &cobra.Command{
 		// Create chonker
 		c, err := chonker.NewDirectory(
 			cmd.Context(),
-			storage.NewDirectory(mem.NewBackEnd(), nil),
+			storage.NewDirectory(mem.NewDirectory(), nil),
 			chonker.WithDirectoryLogger(logger))
 		if err != nil {
 			return err
