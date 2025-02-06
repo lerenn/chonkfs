@@ -81,7 +81,32 @@ func (d *directory) Info(_ context.Context) (DirectoryInfo, error) {
 
 // ListFiles returns a map of files.
 func (d *directory) ListFiles(ctx context.Context) (map[string]File, error) {
-	return nil, fmt.Errorf("not implemented")
+	// Get local files
+	names, err := d.backend.ListFiles(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create the file representation
+	files := make(map[string]File, len(names))
+	for _, name := range names {
+		files[name] = newFile(d.backend, 0, nil)
+	}
+
+	// Get underlayer files
+	if d.underlayer != nil {
+		underlayer, err := d.underlayer.ListFiles(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		// Merge the two maps
+		for k, v := range underlayer {
+			files[k] = v
+		}
+	}
+
+	return files, nil
 }
 
 // GetDirectory returns a child directory.
