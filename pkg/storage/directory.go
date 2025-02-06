@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/lerenn/chonkfs/pkg/info"
 	"github.com/lerenn/chonkfs/pkg/storage/backend"
 )
 
@@ -41,7 +42,7 @@ func (d *directory) CreateDirectory(ctx context.Context, name string) (Directory
 	var child Directory
 
 	// Try to get from backend
-	err := d.backend.IsDirectory(ctx, name)
+	_, err := d.backend.GetDirectory(ctx, name)
 	switch {
 	case err == nil:
 		// Directory already exists
@@ -64,33 +65,34 @@ func (d *directory) CreateDirectory(ctx context.Context, name string) (Directory
 	}
 
 	// Create the directory on the backend
-	if err := d.backend.CreateDirectory(ctx, name); err != nil {
+	dir, err := d.backend.CreateDirectory(ctx, name)
+	if err != nil {
 		return nil, err
 	}
 
 	// Return the new directory
-	return NewDirectory(d.backend, &DirectoryOptions{
+	return NewDirectory(dir, &DirectoryOptions{
 		Underlayer: child,
 	}), nil
 }
 
 // Info returns the directory info.
-func (d *directory) Info(_ context.Context) (DirectoryInfo, error) {
-	return DirectoryInfo{}, nil
+func (d *directory) Info(_ context.Context) (info.Directory, error) {
+	return info.Directory{}, nil
 }
 
 // ListFiles returns a map of files.
 func (d *directory) ListFiles(ctx context.Context) (map[string]File, error) {
 	// Get local files
-	names, err := d.backend.ListFiles(ctx)
+	backendFiles, err := d.backend.ListFiles(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	// Create the file representation
-	files := make(map[string]File, len(names))
-	for _, name := range names {
-		files[name] = newFile(d.backend, 0, nil)
+	files := make(map[string]File, len(backendFiles))
+	for n, f := range backendFiles {
+		files[n] = newFile(f, 0, nil)
 	}
 
 	// Get underlayer files
@@ -123,7 +125,7 @@ func (d *directory) GetDirectory(ctx context.Context, name string) (Directory, e
 	}
 
 	// Get the directory from the backend
-	if err := d.backend.IsDirectory(ctx, name); err != nil {
+	if _, err := d.backend.GetDirectory(ctx, name); err != nil {
 		if !errors.Is(err, backend.ErrNotFound) || underlayer == nil {
 			return nil, err
 		}
@@ -136,8 +138,50 @@ func (d *directory) GetDirectory(ctx context.Context, name string) (Directory, e
 }
 
 // GetFile returns a child file.
-func (d *directory) GetFile(_ context.Context, _ string) (File, error) {
-	return nil, fmt.Errorf("not implemented")
+func (d *directory) GetFile(ctx context.Context, name string) (File, error) {
+	var underlayer File
+	var err error
+
+	// Get the directory from the underlayer
+	if d.underlayer != nil {
+		underlayer, err = d.underlayer.GetFile(ctx, name)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Get the directory from the backend
+	var info info.File
+	backendFile, err := d.backend.GetFile(ctx, name)
+	if err != nil {
+		// If there is an error, or if the file doesn't exist and there is no underlayer, return error
+		if !errors.Is(err, backend.ErrNotFound) || underlayer == nil {
+			return nil, err
+		}
+
+		// Get the info from the underlayer
+		info, err = underlayer.GetInfo(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		// Create a new file on the backend
+		backendFile, err = d.backend.CreateFile(ctx, name, info.ChunkSize)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		// Get the info from the backend
+		info, err = backendFile.GetInfo(ctx)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Return the directory
+	return newFile(backendFile, info.ChunkSize, &fileOptions{
+		Underlayer: underlayer,
+	}), nil
 }
 
 // ListDirectories returns a map of directories.
@@ -150,7 +194,7 @@ func (d *directory) CreateFile(ctx context.Context, name string, chunkSize int) 
 	var child File
 
 	// Try to get from backend
-	err := d.backend.IsFile(ctx, name)
+	_, err := d.backend.GetFile(ctx, name)
 	switch {
 	case err == nil:
 		// File already exists
@@ -173,12 +217,13 @@ func (d *directory) CreateFile(ctx context.Context, name string, chunkSize int) 
 	}
 
 	// Create the file on the backend
-	if err := d.backend.CreateFile(ctx, name, chunkSize); err != nil {
+	backendFile, err := d.backend.CreateFile(ctx, name, chunkSize)
+	if err != nil {
 		return nil, err
 	}
 
 	// Return the new directory
-	return newFile(d.backend, chunkSize, &fileOptions{
+	return newFile(backendFile, chunkSize, &fileOptions{
 		Underlayer: child,
 	}), nil
 }

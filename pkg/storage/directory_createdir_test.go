@@ -12,11 +12,11 @@ func (suite *DirectorySuite) TestCreateDirectory() {
 	suite.Require().NoError(err)
 
 	// Check it exists on directory backend
-	err = suite.DirectoryBackEnd.IsDirectory(context.Background(), "DirectoryA")
+	_, err = suite.DirectoryBackEnd.GetDirectory(context.Background(), "DirectoryA")
 	suite.Require().NoError(err)
 
 	// Check it exists on underlayer backend
-	err = suite.UnderlayerBackEnd.IsDirectory(context.Background(), "DirectoryA")
+	_, err = suite.UnderlayerBackEnd.GetDirectory(context.Background(), "DirectoryA")
 	suite.Require().NoError(err)
 }
 

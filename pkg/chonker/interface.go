@@ -38,7 +38,6 @@ type File interface {
 	// Data
 
 	Read(ctx context.Context, dest []byte, off int) ([]byte, error)
-	Size(ctx context.Context) (int, error)
 	Sync(ctx context.Context) error
 	Truncate(ctx context.Context, size int) error
 	Write(ctx context.Context, data []byte, off int, opts WriteOptions) (written int, errno error)

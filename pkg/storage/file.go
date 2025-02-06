@@ -2,8 +2,10 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"github.com/lerenn/chonkfs/pkg/info"
 	"github.com/lerenn/chonkfs/pkg/storage/backend"
 )
 
@@ -37,9 +39,24 @@ func (f *file) Underlayer() File {
 	return f.underlayer
 }
 
-// Info returns the file info.
-func (f *file) Info(_ context.Context) (FileInfo, error) {
-	return FileInfo{}, fmt.Errorf("not implemented")
+// ChunkSize returns the chunk size.
+func (f *file) ChunkSize() int {
+	return f.chunkSize
+}
+
+// GetInfo returns the file info.
+func (f *file) GetInfo(ctx context.Context) (info.File, error) {
+	if fileInfo, err := f.backend.GetInfo(ctx); err == nil {
+		return fileInfo, nil
+	} else if !errors.Is(err, backend.ErrNotFound) {
+		return info.File{}, fmt.Errorf("%w: %w", ErrStorage, err)
+	}
+
+	if f.underlayer == nil {
+		return info.File{}, ErrFileNotExists
+	}
+
+	return f.underlayer.GetInfo(ctx)
 }
 
 // ReadChunk reads _ from a chunk.
@@ -59,10 +76,5 @@ func (f *file) ResizeChunksNb(_ context.Context, _ int) error {
 
 // ResizeLastChunk resizes the last chunk.
 func (f *file) ResizeLastChunk(_ context.Context, _ int) (changed int, err error) {
-	return 0, fmt.Errorf("not implemented")
-}
-
-// Size returns the size of the file.
-func (f *file) Size(_ context.Context) (int, error) {
 	return 0, fmt.Errorf("not implemented")
 }

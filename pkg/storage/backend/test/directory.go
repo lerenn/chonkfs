@@ -13,49 +13,58 @@ type DirectorySuite struct {
 }
 
 func (suite *DirectorySuite) TestCreateDirectory() {
-	err := suite.Directory.CreateDirectory(context.Background(), "toto")
-	suite.NoError(err)
+	d, err := suite.Directory.CreateDirectory(context.Background(), "toto")
+	suite.Require().NoError(err)
+	suite.Require().NotNil(d)
 
-	err = suite.Directory.IsDirectory(context.Background(), "toto")
-	suite.NoError(err)
+	rd, err := suite.Directory.GetDirectory(context.Background(), "toto")
+	suite.Require().NoError(err)
+	suite.Require().NotNil(rd)
 }
 
 func (suite *DirectorySuite) TestCreateDirectoryOnExistingFile() {
-	err := suite.Directory.CreateFile(context.Background(), "toto", 4096)
-	suite.NoError(err)
+	_, err := suite.Directory.CreateFile(context.Background(), "toto", 4096)
+	suite.Require().NoError(err)
 
-	err = suite.Directory.CreateDirectory(context.Background(), "toto")
-	suite.ErrorIs(err, backend.ErrFileAlreadyExists)
+	_, err = suite.Directory.CreateDirectory(context.Background(), "toto")
+	suite.Require().ErrorIs(err, backend.ErrFileAlreadyExists)
 }
 
 func (suite *DirectorySuite) TestCreateDirectoryOnExistingDirectory() {
-	err := suite.Directory.CreateDirectory(context.Background(), "toto")
-	suite.NoError(err)
+	_, err := suite.Directory.CreateDirectory(context.Background(), "toto")
+	suite.Require().NoError(err)
 
-	err = suite.Directory.CreateDirectory(context.Background(), "toto")
-	suite.ErrorIs(err, backend.ErrDirectoryAlreadyExists)
+	_, err = suite.Directory.CreateDirectory(context.Background(), "toto")
+	suite.Require().ErrorIs(err, backend.ErrDirectoryAlreadyExists)
 }
 
-func (suite *DirectorySuite) TestIsDirectoryWhenIsFile() {
-	err := suite.Directory.CreateFile(context.Background(), "toto", 4096)
-	suite.NoError(err)
+func (suite *DirectorySuite) TestGetDirectoryWhenDoesNotExist() {
+	_, err := suite.Directory.GetDirectory(context.Background(), "toto")
+	suite.Require().ErrorIs(err, backend.ErrNotFound)
+}
 
-	err = suite.Directory.IsDirectory(context.Background(), "toto")
-	suite.ErrorIs(err, backend.ErrIsFile)
+func (suite *DirectorySuite) TestGetDirectoryWhenIsFile() {
+	_, err := suite.Directory.CreateFile(context.Background(), "toto", 4096)
+	suite.Require().NoError(err)
+
+	_, err = suite.Directory.GetDirectory(context.Background(), "toto")
+	suite.Require().ErrorIs(err, backend.ErrIsFile)
 }
 
 func (suite *DirectorySuite) TestListFiles() {
-	err := suite.Directory.CreateFile(context.Background(), "1", 4096)
-	suite.NoError(err)
-	err = suite.Directory.CreateFile(context.Background(), "2", 4096)
-	suite.NoError(err)
-	err = suite.Directory.CreateFile(context.Background(), "3", 4096)
-	suite.NoError(err)
+	_, err := suite.Directory.CreateFile(context.Background(), "1", 4096)
+	suite.Require().NoError(err)
+	_, err = suite.Directory.CreateFile(context.Background(), "2", 4096)
+	suite.Require().NoError(err)
+	_, err = suite.Directory.CreateFile(context.Background(), "3", 4096)
+	suite.Require().NoError(err)
 
-	err = suite.Directory.CreateDirectory(context.Background(), "dir")
-	suite.NoError(err)
+	_, err = suite.Directory.CreateDirectory(context.Background(), "dir")
+	suite.Require().NoError(err)
 
 	files, err := suite.Directory.ListFiles(context.Background())
-	suite.NoError(err)
-	suite.ElementsMatch([]string{"1", "2", "3"}, files)
+	suite.Require().NoError(err)
+	suite.Require().Contains(files, "1")
+	suite.Require().Contains(files, "2")
+	suite.Require().Contains(files, "3")
 }

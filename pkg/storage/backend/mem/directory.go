@@ -4,89 +4,97 @@ import (
 	"context"
 	"fmt"
 	"maps"
-	"slices"
 
+	"github.com/lerenn/chonkfs/pkg/info"
 	"github.com/lerenn/chonkfs/pkg/storage/backend"
 )
 
 type Directory struct {
-	directories map[string]*Directory
-	files       map[string]*file
+	directories map[string]backend.Directory
+	files       map[string]backend.File
 }
 
 func NewDirectory() *Directory {
 	return &Directory{
-		directories: make(map[string]*Directory),
-		files:       make(map[string]*file),
+		directories: make(map[string]backend.Directory),
+		files:       make(map[string]backend.File),
 	}
 }
 
-func (d *Directory) CreateDirectory(_ context.Context, name string) error {
+func (d *Directory) CreateDirectory(_ context.Context, name string) (backend.Directory, error) {
 	// Check if there is a file with this name
 	if _, ok := d.files[name]; ok {
-		return fmt.Errorf("%w: %q", backend.ErrFileAlreadyExists, name)
+		return nil, fmt.Errorf("%w: %q", backend.ErrFileAlreadyExists, name)
 	}
 
 	// Check if a directory with this name already exists
 	if _, ok := d.directories[name]; ok {
-		return fmt.Errorf("%w: %q", backend.ErrDirectoryAlreadyExists, name)
+		return nil, fmt.Errorf("%w: %q", backend.ErrDirectoryAlreadyExists, name)
 	}
 
-	d.directories[name] = NewDirectory()
-	return nil
+	// Create directory and store it
+	nd := NewDirectory()
+	d.directories[name] = nd
+
+	return nd, nil
 }
 
-func (d *Directory) IsDirectory(_ context.Context, name string) error {
+func (d *Directory) GetDirectory(_ context.Context, name string) (backend.Directory, error) {
 	// Check if there is a file with this name
 	if _, ok := d.files[name]; ok {
-		return fmt.Errorf("%w: %q", backend.ErrIsFile, name)
+		return nil, fmt.Errorf("%w: %q", backend.ErrIsFile, name)
 	}
 
 	// Check if there is a directory with this name
-	if _, ok := d.directories[name]; !ok {
-		return fmt.Errorf("%w: %q", backend.ErrNotFound, name)
+	nd, ok := d.directories[name]
+	if !ok {
+		return nil, fmt.Errorf("%w: %q", backend.ErrNotFound, name)
 	}
 
-	return nil
+	return nd, nil
 }
 
-func (d *Directory) CreateFile(_ context.Context, name string, chunkSize int) error {
+func (d *Directory) GetInfo(_ context.Context) (info.Directory, error) {
+	return info.Directory{}, nil
+}
+
+func (d *Directory) CreateFile(_ context.Context, name string, chunkSize int) (backend.File, error) {
 	// Check if there is a file with this name
 	if _, ok := d.files[name]; ok {
-		return fmt.Errorf("%w: %q", backend.ErrFileAlreadyExists, name)
+		return nil, fmt.Errorf("%w: %q", backend.ErrFileAlreadyExists, name)
 	}
 
 	// Check if there is a directory with this name
 	if _, ok := d.directories[name]; ok {
-		return fmt.Errorf("%w: %q", backend.ErrDirectoryAlreadyExists, name)
+		return nil, fmt.Errorf("%w: %q", backend.ErrDirectoryAlreadyExists, name)
 	}
 
-	// Create the file if it does not exist
-	if _, ok := d.files[name]; !ok {
-		f, err := newFile(chunkSize)
-		if err != nil {
-			return err
-		}
-		d.files[name] = f
+	// Create the file
+	f, err := newFile(chunkSize)
+	if err != nil {
+		return nil, err
 	}
 
-	return nil
+	d.files[name] = f
+
+	return f, nil
 }
 
-func (d *Directory) IsFile(_ context.Context, name string) error {
+func (d *Directory) GetFile(ctx context.Context, name string) (backend.File, error) {
 	// Check if there is a directory with this name
 	if _, ok := d.directories[name]; ok {
-		return fmt.Errorf("%w: %q", backend.ErrIsDirectory, name)
+		return nil, fmt.Errorf("%w: %q", backend.ErrIsDirectory, name)
 	}
 
 	// Check if there is a file with this name
-	if _, ok := d.files[name]; !ok {
-		return fmt.Errorf("%w: %q", backend.ErrNotFound, name)
+	f, ok := d.files[name]
+	if !ok {
+		return nil, fmt.Errorf("%w: %q", backend.ErrNotFound, name)
 	}
 
-	return nil
+	return f, nil
 }
 
-func (d *Directory) ListFiles(_ context.Context) ([]string, error) {
-	return slices.Collect(maps.Keys(d.files)), nil
+func (d *Directory) ListFiles(ctx context.Context) (map[string]backend.File, error) {
+	return maps.Clone(d.files), nil
 }

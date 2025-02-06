@@ -2,6 +2,8 @@ package storage
 
 import (
 	"context"
+
+	"github.com/lerenn/chonkfs/pkg/info"
 )
 
 // Directory represents a directory in the storage.
@@ -11,7 +13,7 @@ type Directory interface {
 	CreateDirectory(ctx context.Context, name string) (Directory, error)
 	GetDirectory(ctx context.Context, name string) (Directory, error)
 	ListDirectories(ctx context.Context) (map[string]Directory, error)
-	Info(ctx context.Context) (DirectoryInfo, error)
+	Info(ctx context.Context) (info.Directory, error)
 	RemoveDirectory(ctx context.Context, name string) error
 	RenameDirectory(ctx context.Context, name string, newParent Directory, newName string, noReplace bool) error
 
@@ -28,24 +30,13 @@ type Directory interface {
 	Underlayer() Directory
 }
 
-// DirectoryInfo represents the information of a directory.
-type DirectoryInfo struct {
-}
-
 // File represents a file in the storage.
 type File interface {
-	Size(ctx context.Context) (int, error)
 	WriteChunk(ctx context.Context, chunkIndex int, data []byte, offset int) (int, error)
 	ReadChunk(ctx context.Context, chunkIndex int, data []byte, offset int) (int, error)
 	ResizeChunksNb(ctx context.Context, size int) error
 	ResizeLastChunk(ctx context.Context, size int) (changed int, err error)
-	Info(ctx context.Context) (FileInfo, error)
+	GetInfo(ctx context.Context) (info.File, error)
 	Underlayer() File
-}
-
-// FileInfo represents the information of a file.
-type FileInfo struct {
-	ChunkSize     int
-	ChunksCount   int
-	LastChunkSize int
+	ChunkSize() int
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/lerenn/chonkfs/pkg/info"
 	"github.com/lerenn/chonkfs/pkg/storage"
 	"github.com/lerenn/chonkfs/pkg/storage/backend"
 	"github.com/lerenn/chonkfs/pkg/storage/backend/mem"
@@ -38,7 +39,7 @@ func (suite *DirectorySuite) TestInfo() {
 	suite.Require().NoError(err)
 
 	// Get info
-	info, err := suite.Directory.Info(context.Background())
+	dirInfo, err := suite.Directory.Info(context.Background())
 	suite.Require().NoError(err)
-	suite.Require().Equal(storage.DirectoryInfo{}, info)
+	suite.Require().Equal(info.Directory{}, dirInfo)
 }

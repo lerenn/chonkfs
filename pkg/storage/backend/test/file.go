@@ -11,38 +11,50 @@ type FileSuite struct {
 }
 
 func (suite *FileSuite) TestCreateFile() {
-	err := suite.Directory.CreateFile(nil, "toto", 4096)
-	suite.NoError(err)
+	f, err := suite.Directory.CreateFile(nil, "toto", 4096)
+	suite.Require().NoError(err)
+	suite.Require().NotNil(f)
 
-	err = suite.Directory.IsFile(nil, "toto")
-	suite.NoError(err)
+	rf, err := suite.Directory.GetFile(nil, "toto")
+	suite.Require().NoError(err)
+	suite.Require().NotNil(rf)
 }
 
 func (suite *FileSuite) TestCreateFileOnExistingFile() {
-	err := suite.Directory.CreateFile(nil, "toto", 4096)
-	suite.NoError(err)
+	_, err := suite.Directory.CreateFile(nil, "toto", 4096)
+	suite.Require().NoError(err)
 
-	err = suite.Directory.CreateFile(nil, "toto", 4096)
-	suite.ErrorIs(err, backend.ErrFileAlreadyExists)
+	_, err = suite.Directory.CreateFile(nil, "toto", 4096)
+	suite.Require().ErrorIs(err, backend.ErrFileAlreadyExists)
 }
 
 func (suite *FileSuite) TestCreateFileOnExistingDirectory() {
-	err := suite.Directory.CreateDirectory(nil, "toto")
-	suite.NoError(err)
+	_, err := suite.Directory.CreateDirectory(nil, "toto")
+	suite.Require().NoError(err)
 
-	err = suite.Directory.CreateFile(nil, "toto", 4096)
-	suite.ErrorIs(err, backend.ErrDirectoryAlreadyExists)
+	_, err = suite.Directory.CreateFile(nil, "toto", 4096)
+	suite.Require().ErrorIs(err, backend.ErrDirectoryAlreadyExists)
 }
 
 func (suite *FileSuite) TestCreateFileWithZeroChunkSize() {
-	err := suite.Directory.CreateFile(nil, "toto", 0)
-	suite.ErrorIs(err, backend.ErrInvalidChunkSize)
+	_, err := suite.Directory.CreateFile(nil, "toto", 0)
+	suite.Require().ErrorIs(err, backend.ErrInvalidChunkSize)
 }
 
 func (suite *FileSuite) TestIsFileWhenIsDirectory() {
-	err := suite.Directory.CreateDirectory(nil, "toto")
-	suite.NoError(err)
+	_, err := suite.Directory.CreateDirectory(nil, "toto")
+	suite.Require().NoError(err)
 
-	err = suite.Directory.IsFile(nil, "toto")
-	suite.ErrorIs(err, backend.ErrIsDirectory)
+	_, err = suite.Directory.GetFile(nil, "toto")
+	suite.Require().ErrorIs(err, backend.ErrIsDirectory)
+}
+
+func (suite *FileSuite) TestGetInfoFromEmptyFile() {
+	f, err := suite.Directory.CreateFile(nil, "toto", 4096)
+	suite.Require().NoError(err)
+
+	info, err := f.GetInfo(nil)
+	suite.Require().NoError(err)
+
+	suite.EqualValues(0, info.ChunksCount)
 }

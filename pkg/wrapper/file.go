@@ -197,13 +197,14 @@ func (fl *File) Setattr(ctx context.Context, _ fs.FileHandle, in *fuse.SetAttrIn
 	fl.logger.Printf("File[%s].Setattr(in=%+v, out=%+v)\n", fl.name, *in, *out)
 
 	// Get actual size
-	actualSize, err := fl.backend.Size(ctx)
+	info, err := fl.backend.GetAttributes(ctx)
 	if err != nil {
 		return chonker.ToSyscallErrno(err,
 			chonker.ToSyscallErrnoOptions{
 				Logger: fl.logger,
 			})
 	}
+	actualSize := info.Size
 
 	// Truncate the file if needed
 	if in.Size < uint64(actualSize) {

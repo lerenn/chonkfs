@@ -38,11 +38,11 @@ func (suite *FileSuite) TestCreateFile() {
 	suite.Require().NoError(err)
 
 	// Check it exists on directory backend
-	err = suite.DirectoryBackEnd.IsFile(context.Background(), "FileA")
+	_, err = suite.DirectoryBackEnd.GetFile(context.Background(), "FileA")
 	suite.Require().NoError(err)
 
 	// Check it exists on underlayer backend
-	err = suite.UnderlayerBackEnd.IsFile(context.Background(), "FileA")
+	_, err = suite.UnderlayerBackEnd.GetFile(context.Background(), "FileA")
 	suite.Require().NoError(err)
 }
 
@@ -64,4 +64,36 @@ func (suite *FileSuite) TestCreateFileWhenDirectoryAlreadyExists() {
 	// Create a file with the same name
 	_, err = suite.Directory.CreateFile(context.Background(), "DirectoryA", 4096)
 	suite.Require().ErrorIs(err, storage.ErrDirectoryAlreadyExists)
+}
+
+func (suite *FileSuite) TestGetInfo() {
+	// Create a file
+	_, err := suite.Directory.CreateFile(context.Background(), "FileA", 4096)
+	suite.Require().NoError(err)
+
+	// Get the file
+	file, err := suite.Directory.GetFile(context.Background(), "FileA")
+	suite.Require().NoError(err)
+	suite.Require().NotNil(file)
+
+	// Get the file info
+	info, err := file.GetInfo(context.Background())
+	suite.Require().NoError(err)
+	suite.Require().Equal(4096, info.ChunkSize)
+}
+
+func (suite *FileSuite) TestGetInfoWhenFileExistsOnlyOnUnderlayer() {
+	// Create a file on underlayer
+	_, err := suite.Underlayer.CreateFile(context.Background(), "FileA", 4096)
+	suite.Require().NoError(err)
+
+	// Get the file
+	file, err := suite.Directory.GetFile(context.Background(), "FileA")
+	suite.Require().NoError(err)
+	suite.Require().NotNil(file)
+
+	// Get the file info
+	info, err := file.GetInfo(context.Background())
+	suite.Require().NoError(err)
+	suite.Require().Equal(4096, info.ChunkSize)
 }
