@@ -76,3 +76,22 @@ func (suite *DirectorySuite) TestInfo() {
 	suite.Require().NoError(err)
 	suite.Require().Equal(storage.DirectoryInfo{}, info)
 }
+
+func (suite *DirectorySuite) TestListFiles() {
+	// Create a directory
+	_, err := suite.Directory.CreateDirectory(context.Background(), "DirectoryA")
+	suite.Require().NoError(err)
+	_, err = suite.Directory.CreateDirectory(context.Background(), "DirectoryB")
+	suite.Require().NoError(err)
+	_, err = suite.Directory.CreateDirectory(context.Background(), "DirectoryC")
+	suite.Require().NoError(err)
+
+	// Create a file
+	_, err = suite.Directory.CreateFile(context.Background(), "FileA", 4096)
+	suite.Require().NoError(err)
+
+	// List files
+	files, err := suite.Directory.ListFiles(context.Background())
+	suite.Require().NoError(err)
+	suite.Require().Len(files, 3)
+}

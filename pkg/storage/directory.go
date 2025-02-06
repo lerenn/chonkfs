@@ -80,7 +80,7 @@ func (d *directory) Info(_ context.Context) (DirectoryInfo, error) {
 }
 
 // ListFiles returns a map of files.
-func (d *directory) ListFiles(_ context.Context) (map[string]File, error) {
+func (d *directory) ListFiles(ctx context.Context) (map[string]File, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 

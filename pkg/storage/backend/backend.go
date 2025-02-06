@@ -8,4 +8,5 @@ type BackEnd interface {
 
 	CreateFile(ctx context.Context, path string, chunkSize int) error
 	IsFile(ctx context.Context, path string) error
+	ListFiles(ctx context.Context, path string) ([]string, error)
 }

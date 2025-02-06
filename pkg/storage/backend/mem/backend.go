@@ -21,7 +21,7 @@ func NewBackEnd() *backEnd {
 
 func (b *backEnd) CreateDirectory(_ context.Context, path string) error {
 	path = strings.Trim(path, "/")
-	return b.root.createDirectory(path)
+	return b.root.CreateDirectory(path)
 }
 
 func (b *backEnd) IsDirectory(_ context.Context, path string) error {
@@ -31,10 +31,15 @@ func (b *backEnd) IsDirectory(_ context.Context, path string) error {
 
 func (b *backEnd) CreateFile(_ context.Context, path string, chunkSize int) error {
 	path = strings.Trim(path, "/")
-	return b.root.createFile(path, chunkSize)
+	return b.root.CreateFile(path, chunkSize)
 }
 
 func (b *backEnd) IsFile(ctx context.Context, path string) error {
 	path = strings.Trim(path, "/")
 	return b.root.IsFile(path)
+}
+
+func (b *backEnd) ListFiles(ctx context.Context, path string) ([]string, error) {
+	path = strings.Trim(path, "/")
+	return b.root.ListFiles(path)
 }

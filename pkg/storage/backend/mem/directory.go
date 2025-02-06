@@ -2,6 +2,8 @@ package mem
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 
 	"github.com/lerenn/chonkfs/pkg/storage/backend"
@@ -19,7 +21,7 @@ func newDirectory() *directory {
 	}
 }
 
-func (d *directory) createDirectory(path string) error {
+func (d *directory) CreateDirectory(path string) error {
 	// Split path
 	parts := strings.Split(path, "/")
 
@@ -51,7 +53,7 @@ func (d *directory) createDirectory(path string) error {
 		}
 
 		// Create the directory in the child
-		return d.directories[parts[0]].createDirectory(strings.Join(parts[1:], "/"))
+		return d.directories[parts[0]].CreateDirectory(strings.Join(parts[1:], "/"))
 	}
 }
 
@@ -85,14 +87,14 @@ func (d *directory) IsDirectory(path string) error {
 	}
 }
 
-func (d *directory) createFile(path string, chunkSize int) error {
+func (d *directory) CreateFile(path string, chunkSize int) error {
 	// Split path
 	parts := strings.Split(path, "/")
 
-	switch len(parts) {
-	case 0:
+	switch {
+	case len(parts) == 1 && parts[0] == "":
 		return fmt.Errorf("%w: empty path", backend.ErrUnexpectedError)
-	case 1:
+	case len(parts) == 1:
 		// Check if there is a file with this name
 		if _, ok := d.files[parts[0]]; ok {
 			return fmt.Errorf("%w: %q", backend.ErrFileAlreadyExists, path)
@@ -125,7 +127,7 @@ func (d *directory) createFile(path string, chunkSize int) error {
 		}
 
 		// Create the file in the child
-		return d.directories[parts[0]].createDirectory(strings.Join(parts[1:], "/"))
+		return d.directories[parts[0]].CreateDirectory(strings.Join(parts[1:], "/"))
 	}
 }
 
@@ -133,10 +135,10 @@ func (d *directory) IsFile(path string) error {
 	// Split path
 	parts := strings.Split(path, "/")
 
-	switch len(parts) {
-	case 0:
+	switch {
+	case len(parts) == 1 && parts[0] == "":
 		return fmt.Errorf("%w: empty path", backend.ErrUnexpectedError)
-	case 1:
+	case len(parts) == 1:
 		// Check if there is a directory with this name
 		if _, ok := d.directories[parts[0]]; ok {
 			return fmt.Errorf("%w: %q", backend.ErrIsDirectory, path)
@@ -156,5 +158,28 @@ func (d *directory) IsFile(path string) error {
 
 		// Check in the child
 		return d.directories[parts[0]].IsFile(strings.Join(parts[1:], "/"))
+	}
+}
+
+func (d *directory) ListFiles(path string) ([]string, error) {
+	// Split path
+	parts := strings.Split(path, "/")
+
+	switch {
+	case len(parts) == 1 && parts[0] == "":
+		return slices.Collect(maps.Keys(d.files)), nil
+	default:
+		// Check if there is a file with this name
+		if _, ok := d.files[parts[0]]; ok {
+			return nil, fmt.Errorf("%w: %q", backend.ErrIsFile, path)
+		}
+
+		// Check if there is a directory with this name
+		if _, ok := d.directories[parts[0]]; !ok {
+			return nil, fmt.Errorf("%w: %q", backend.ErrNotFound, path)
+		}
+
+		// List files in the child
+		return d.directories[parts[0]].ListFiles(strings.Join(parts[1:], "/"))
 	}
 }
