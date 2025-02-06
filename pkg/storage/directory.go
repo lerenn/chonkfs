@@ -110,8 +110,29 @@ func (d *directory) ListFiles(ctx context.Context) (map[string]File, error) {
 }
 
 // GetDirectory returns a child directory.
-func (d *directory) GetDirectory(_ context.Context, _ string) (Directory, error) {
-	return nil, fmt.Errorf("not implemented")
+func (d *directory) GetDirectory(ctx context.Context, name string) (Directory, error) {
+	var underlayer Directory
+	var err error
+
+	// Get the directory from the underlayer
+	if d.underlayer != nil {
+		underlayer, err = d.underlayer.GetDirectory(ctx, name)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Get the directory from the backend
+	if err := d.backend.IsDirectory(ctx, name); err != nil {
+		if !errors.Is(err, backend.ErrNotFound) || underlayer == nil {
+			return nil, err
+		}
+	}
+
+	// Return the directory
+	return NewDirectory(d.backend, &DirectoryOptions{
+		Underlayer: underlayer,
+	}), nil
 }
 
 // GetFile returns a child file.
