@@ -117,7 +117,7 @@ func (d *Directory) RemoveDirectory(ctx context.Context, name string) error {
 }
 
 func (d *Directory) ListDirectories(ctx context.Context) (map[string]storage.Directory, error) {
-	return nil, fmt.Errorf("not implemented")
+	return maps.Clone(d.directories), nil
 }
 
 func (d *Directory) RemoveFile(ctx context.Context, name string) error {

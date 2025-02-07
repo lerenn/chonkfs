@@ -63,11 +63,17 @@ func (suite *DirectorySuite) TestListFiles() {
 	_, err = suite.Directory.CreateDirectory(context.Background(), "dir")
 	suite.Require().NoError(err)
 
+	// Check content
 	files, err := suite.Directory.ListFiles(context.Background())
 	suite.Require().NoError(err)
 	suite.Require().Contains(files, "1")
 	suite.Require().Contains(files, "2")
 	suite.Require().Contains(files, "3")
+
+	// Check length
+	infoFile1, err := files["1"].GetInfo(context.Background())
+	suite.Require().NoError(err)
+	suite.Require().Equal(4096, infoFile1.ChunkSize)
 }
 
 func (suite *DirectorySuite) TestRemoveDirectory() {
@@ -106,4 +112,19 @@ func (suite *DirectorySuite) TestGetFile() {
 	file, err := suite.Directory.GetFile(context.Background(), "File")
 	suite.Require().NoError(err)
 	suite.Require().NotNil(file)
+}
+
+func (suite *DirectorySuite) TestListDirectories() {
+	// Create a directory
+	_, err := suite.Directory.CreateDirectory(context.Background(), "DirectoryA")
+	suite.Require().NoError(err)
+
+	// Create a directory
+	_, err = suite.Directory.CreateDirectory(context.Background(), "DirectoryB")
+	suite.Require().NoError(err)
+
+	// List directories
+	dirs, err := suite.Directory.ListDirectories(context.Background())
+	suite.Require().NoError(err)
+	suite.Require().Len(dirs, 2)
 }

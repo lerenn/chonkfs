@@ -29,10 +29,10 @@ flowchart LR
         Chonker --Read/Store--> LayerRam
 
         subgraph "Storage"
-            subgraph LayerRam
+            subgraph LayerRam[Layer]
                 RAM 
             end
-            subgraph LayerDisk
+            subgraph LayerDisk[Layer]
                 LocalDisk[Local Disk]
             end
             

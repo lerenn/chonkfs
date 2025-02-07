@@ -87,7 +87,14 @@ func (d *directory) ListFiles(ctx context.Context) (map[string]storage.File, err
 	// Create the file representation
 	files := make(map[string]storage.File, len(backendFiles))
 	for n, f := range backendFiles {
-		files[n] = newFile(f, 0, nil)
+		// Get info
+		info, err := f.GetInfo(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		// Create the file representation
+		files[n] = newFile(f, info.ChunkSize, nil)
 	}
 
 	// Get underlayer files
@@ -180,8 +187,33 @@ func (d *directory) GetFile(ctx context.Context, name string) (storage.File, err
 }
 
 // ListDirectories returns a map of directories.
-func (d *directory) ListDirectories(_ context.Context) (map[string]storage.Directory, error) {
-	return nil, fmt.Errorf("not implemented")
+func (d *directory) ListDirectories(ctx context.Context) (map[string]storage.Directory, error) {
+	// Get local directories
+	backendDirectories, err := d.backend.ListDirectories(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create the file representation
+	directories := make(map[string]storage.Directory, len(backendDirectories))
+	for n, d := range backendDirectories {
+		directories[n] = NewDirectory(d, nil)
+	}
+
+	// Get underlayer files
+	if d.underlayer != nil {
+		underlayer, err := d.underlayer.ListDirectories(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		// Merge the two maps
+		for k, v := range underlayer {
+			directories[k] = v
+		}
+	}
+
+	return directories, nil
 }
 
 // CreateFile creates a file in the directory.
