@@ -56,3 +56,51 @@ func (suite *FileSuite) TestGetInfoWhenFileExistsOnlyOnUnderlayer() {
 	suite.Require().NoError(err)
 	suite.Require().Equal(4096, info.ChunkSize)
 }
+
+func (suite *FileSuite) TestResizeChunksNbOnBackendAndUnderlayer() {
+	// Create a file
+	file, err := suite.Directory.CreateFile(context.Background(), "FileA", 4096)
+	suite.Require().NoError(err)
+
+	// Resize the file
+	err = file.ResizeChunksNb(context.Background(), 3)
+	suite.Require().NoError(err)
+
+	// Check the file on the backend
+	_, err = suite.DirectoryBackEnd.GetFile(context.Background(), "FileA")
+	suite.Require().NoError(err)
+	info, err := file.GetInfo(context.Background())
+	suite.Require().NoError(err)
+	suite.Require().Equal(3, info.ChunksCount)
+
+	// Check the file on the underlayer
+	_, err = suite.UnderlayerBackEnd.GetFile(context.Background(), "FileA")
+	suite.Require().NoError(err)
+	info, err = file.GetInfo(context.Background())
+	suite.Require().NoError(err)
+	suite.Require().Equal(3, info.ChunksCount)
+}
+
+func (suite *FileSuite) TestResizeChunksNbOnUnderlayerOnly() {
+	// Create a file on underlayer
+	file, err := suite.Underlayer.CreateFile(context.Background(), "FileA", 4096)
+	suite.Require().NoError(err)
+
+	// Resize the file
+	err = file.ResizeChunksNb(context.Background(), 3)
+	suite.Require().NoError(err)
+
+	// Check the file
+	_, err = suite.Directory.GetFile(context.Background(), "FileA")
+	suite.Require().NoError(err)
+	info, err := file.GetInfo(context.Background())
+	suite.Require().NoError(err)
+	suite.Require().Equal(3, info.ChunksCount)
+
+	// Check the file on the underlayer
+	_, err = suite.UnderlayerBackEnd.GetFile(context.Background(), "FileA")
+	suite.Require().NoError(err)
+	info, err = file.GetInfo(context.Background())
+	suite.Require().NoError(err)
+	suite.Require().Equal(3, info.ChunksCount)
+}

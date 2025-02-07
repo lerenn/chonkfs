@@ -59,3 +59,24 @@ func (suite *FileSuite) TestGetInfoFromEmptyFile() {
 	suite.Require().Equal(0, info.ChunksCount)
 	suite.Require().Equal(4096, info.ChunkSize)
 }
+
+func (suite *FileSuite) TestResizeChunksNb() {
+	f, err := suite.Directory.CreateFile(nil, "toto", 4096)
+	suite.Require().NoError(err)
+
+	// Resize to superior size
+	err = f.ResizeChunksNb(nil, 10)
+	suite.Require().NoError(err)
+
+	info, err := f.GetInfo(nil)
+	suite.Require().NoError(err)
+	suite.Require().Equal(10, info.ChunksCount)
+
+	// Resize to inferior size
+	err = f.ResizeChunksNb(nil, 5)
+	suite.Require().NoError(err)
+
+	info, err = f.GetInfo(nil)
+	suite.Require().NoError(err)
+	suite.Require().Equal(5, info.ChunksCount)
+}

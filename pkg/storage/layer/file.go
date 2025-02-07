@@ -60,8 +60,14 @@ func (f *file) WriteChunk(_ context.Context, _ int, _ []byte, _ int) (int, error
 }
 
 // ResizeChunksNb resizes the number of chunks.
-func (f *file) ResizeChunksNb(_ context.Context, _ int) error {
-	return fmt.Errorf("not implemented")
+func (f *file) ResizeChunksNb(ctx context.Context, size int) error {
+	if f.underlayer != nil {
+		if err := f.underlayer.ResizeChunksNb(ctx, size); err != nil {
+			return err
+		}
+	}
+
+	return f.backend.ResizeChunksNb(ctx, size)
 }
 
 // ResizeLastChunk resizes the last chunk.

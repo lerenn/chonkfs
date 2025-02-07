@@ -48,11 +48,23 @@ func (f *file) ReadChunk(ctx context.Context, chunkIndex int, data []byte, offse
 }
 
 func (f *file) ResizeChunksNb(ctx context.Context, size int) error {
-	return fmt.Errorf("not implemented")
+	if size < 0 {
+		return fmt.Errorf("%w: %d", storage.ErrInvalidChunkNb, size)
+	}
 
+	if size > len(f.data) {
+		// Add chunks
+		for i := len(f.data); i < size; i++ {
+			f.data = append(f.data, make([]byte, f.chunkSize))
+		}
+	} else {
+		// Remove chunks
+		f.data = f.data[:size]
+	}
+
+	return nil
 }
 
 func (f *file) ResizeLastChunk(ctx context.Context, size int) (changed int, err error) {
 	return 0, fmt.Errorf("not implemented")
-
 }
