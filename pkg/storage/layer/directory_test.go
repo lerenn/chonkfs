@@ -170,3 +170,60 @@ func (suite *DirectorySuite) TestCreateDirectoryWhenFileAlreadyExists() {
 	_, err = suite.Directory.CreateDirectory(context.Background(), "test")
 	suite.Require().ErrorIs(err, storage.ErrFileAlreadyExists)
 }
+
+func (suite *DirectorySuite) TestListDirectoriesWithOneInUnderlayer() {
+	// Create a file
+	_, err := suite.Underlayer.CreateFile(context.Background(), "File", 4096)
+	suite.Require().NoError(err)
+
+	// Create a file in underlayer
+	_, err = suite.Underlayer.CreateDirectory(context.Background(), "DirectoryA")
+	suite.Require().NoError(err)
+
+	// Create 2 files in directory
+	_, err = suite.Directory.CreateDirectory(context.Background(), "DirectoryB")
+	suite.Require().NoError(err)
+	_, err = suite.Directory.CreateDirectory(context.Background(), "DirectoryC")
+	suite.Require().NoError(err)
+
+	// List directories
+	dirs, err := suite.Directory.ListDirectories(context.Background())
+	suite.Require().NoError(err)
+	suite.Require().Len(dirs, 3)
+}
+
+func (suite *DirectorySuite) TestRemoveFileOnBackendAndUnderlayer() {
+	// Create a directory
+	_, err := suite.Directory.CreateFile(context.Background(), "File", 4096)
+	suite.Require().NoError(err)
+
+	// Remove the directory
+	err = suite.Directory.RemoveFile(context.Background(), "File")
+	suite.Require().NoError(err)
+
+	// Check it does not exist on directory backend
+	_, err = suite.DirectoryBackEnd.GetFile(context.Background(), "File")
+	suite.Require().ErrorIs(err, storage.ErrFileNotFound)
+
+	// Check it does not exist on underlayer backend
+	_, err = suite.UnderlayerBackEnd.GetFile(context.Background(), "File")
+	suite.Require().ErrorIs(err, storage.ErrFileNotFound)
+}
+
+func (suite *DirectorySuite) TestRemoveFileWhenOnlyOnUnderlayer() {
+	// Create a directory on underlayer
+	_, err := suite.Underlayer.CreateFile(context.Background(), "File", 4096)
+	suite.Require().NoError(err)
+
+	// Remove the directory
+	err = suite.Directory.RemoveFile(context.Background(), "File")
+	suite.Require().NoError(err)
+
+	// Check it does not exist on directory backend
+	_, err = suite.DirectoryBackEnd.GetFile(context.Background(), "File")
+	suite.Require().ErrorIs(err, storage.ErrFileNotFound)
+
+	// Check it does not exist on underlayer backend
+	_, err = suite.UnderlayerBackEnd.GetFile(context.Background(), "File")
+	suite.Require().ErrorIs(err, storage.ErrFileNotFound)
+}

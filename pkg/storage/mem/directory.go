@@ -121,7 +121,20 @@ func (d *Directory) ListDirectories(ctx context.Context) (map[string]storage.Dir
 }
 
 func (d *Directory) RemoveFile(ctx context.Context, name string) error {
-	return fmt.Errorf("not implemented")
+	// Check if there is a directory with this name
+	if _, ok := d.directories[name]; ok {
+		return fmt.Errorf("%w: %q", storage.ErrIsDirectory, name)
+	}
+
+	// Check if there is a file with this name
+	if _, ok := d.files[name]; !ok {
+		return fmt.Errorf("%w: %q", storage.ErrFileNotFound, name)
+	}
+
+	// Remove the file
+	delete(d.files, name)
+
+	return nil
 }
 
 func (d *Directory) RenameFile(ctx context.Context, name string, newParent storage.Directory, newName string, noReplace bool) error {

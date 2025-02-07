@@ -128,3 +128,19 @@ func (suite *DirectorySuite) TestListDirectories() {
 	suite.Require().NoError(err)
 	suite.Require().Len(dirs, 2)
 }
+
+func (suite *DirectorySuite) TestRemoveFile() {
+	_, err := suite.Directory.CreateFile(context.Background(), "dir", 4096)
+	suite.Require().NoError(err)
+
+	err = suite.Directory.RemoveFile(context.Background(), "dir")
+	suite.Require().NoError(err)
+
+	_, err = suite.Directory.GetFile(context.Background(), "dir")
+	suite.Require().ErrorIs(err, storage.ErrFileNotFound)
+}
+
+func (suite *DirectorySuite) TestRemoveFileWhenDoesNotExist() {
+	err := suite.Directory.RemoveFile(context.Background(), "dir")
+	suite.Require().ErrorIs(err, storage.ErrFileNotFound)
+}
