@@ -144,3 +144,66 @@ func (suite *DirectorySuite) TestRemoveFileWhenDoesNotExist() {
 	err := suite.Directory.RemoveFile(context.Background(), "dir")
 	suite.Require().ErrorIs(err, storage.ErrFileNotFound)
 }
+
+func (suite *DirectorySuite) TestRenameFileOnSameDirectory() {
+	_, err := suite.Directory.CreateFile(context.Background(), "file", 4096)
+	suite.Require().NoError(err)
+
+	err = suite.Directory.RenameFile(context.Background(), "file", suite.Directory, "newFile", true)
+	suite.Require().NoError(err)
+
+	_, err = suite.Directory.GetFile(context.Background(), "file")
+	suite.Require().ErrorIs(err, storage.ErrFileNotFound)
+
+	_, err = suite.Directory.GetFile(context.Background(), "newFile")
+	suite.Require().NoError(err)
+}
+
+func (suite *DirectorySuite) TestRenameFileOnDifferentDirectory() {
+	_, err := suite.Directory.CreateFile(context.Background(), "file", 4096)
+	suite.Require().NoError(err)
+
+	dir, err := suite.Directory.CreateDirectory(context.Background(), "dir")
+	suite.Require().NoError(err)
+
+	err = suite.Directory.RenameFile(context.Background(), "file", dir, "newFile", true)
+	suite.Require().NoError(err)
+
+	_, err = suite.Directory.GetFile(context.Background(), "file")
+	suite.Require().ErrorIs(err, storage.ErrFileNotFound)
+
+	_, err = dir.GetFile(context.Background(), "newFile")
+	suite.Require().NoError(err)
+}
+
+func (suite *DirectorySuite) TestRenameFileOnExistingFileWithNoReplace() {
+	_, err := suite.Directory.CreateFile(context.Background(), "file", 4096)
+	suite.Require().NoError(err)
+
+	_, err = suite.Directory.CreateFile(context.Background(), "newFile", 4096)
+	suite.Require().NoError(err)
+
+	err = suite.Directory.RenameFile(context.Background(), "file", suite.Directory, "newFile", false)
+	suite.Require().ErrorIs(err, storage.ErrFileAlreadyExists)
+}
+
+func (suite *DirectorySuite) TestRenameFileOnExistingFileWithReplace() {
+	_, err := suite.Directory.CreateFile(context.Background(), "file", 4096)
+	suite.Require().NoError(err)
+
+	_, err = suite.Directory.CreateFile(context.Background(), "newFile", 8192)
+	suite.Require().NoError(err)
+
+	err = suite.Directory.RenameFile(context.Background(), "file", suite.Directory, "newFile", true)
+	suite.Require().NoError(err)
+
+	_, err = suite.Directory.GetFile(context.Background(), "file")
+	suite.Require().ErrorIs(err, storage.ErrFileNotFound)
+
+	f, err := suite.Directory.GetFile(context.Background(), "newFile")
+	suite.Require().NoError(err)
+
+	info, err := f.GetInfo(context.Background())
+	suite.Require().NoError(err)
+	suite.Require().Equal(4096, info.ChunkSize)
+}

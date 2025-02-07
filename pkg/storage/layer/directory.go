@@ -297,22 +297,44 @@ func (d *directory) RemoveFile(ctx context.Context, name string) error {
 
 // RenameFile renames a child file of the directory.
 func (d *directory) RenameFile(
-	_ context.Context,
-	_ string,
-	_ storage.Directory,
-	_ string,
-	_ bool,
+	ctx context.Context,
+	name string,
+	newParent storage.Directory,
+	newName string,
+	noReplace bool,
 ) error {
-	return fmt.Errorf("not implemented")
+	// Rename the file on the underlayer
+	if d.underlayer != nil {
+		// Get new parent underlayer
+		newParentUnderlayer := newParent.(*directory).underlayer
+
+		// Rename the file on the underlayer
+		if err := d.underlayer.RenameFile(ctx, name, newParentUnderlayer, newName, noReplace); err != nil {
+			return err
+		}
+	}
+
+	// Get new parent backend
+	newParentBackend := newParent.(*directory).backend
+
+	// Rename the file on the backend
+	err := d.backend.RenameFile(ctx, name, newParentBackend, newName, noReplace)
+	if err == nil {
+		return nil
+	} else if errors.Is(err, storage.ErrFileNotFound) && d.underlayer != nil {
+		return nil
+	}
+
+	return err
 }
 
 // RenameDirectory renames a child directory of the directory.
 func (d *directory) RenameDirectory(
-	_ context.Context,
-	_ string,
-	_ storage.Directory,
-	_ string,
-	_ bool,
+	ctx context.Context,
+	name string,
+	newParent storage.Directory,
+	newName string,
+	noReplace bool,
 ) error {
 	return fmt.Errorf("not implemented")
 }

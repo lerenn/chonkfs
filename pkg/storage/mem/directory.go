@@ -9,19 +9,19 @@ import (
 	"github.com/lerenn/chonkfs/pkg/storage"
 )
 
-type Directory struct {
+type directory struct {
 	directories map[string]storage.Directory
 	files       map[string]storage.File
 }
 
-func NewDirectory() *Directory {
-	return &Directory{
+func NewDirectory() *directory {
+	return &directory{
 		directories: make(map[string]storage.Directory),
 		files:       make(map[string]storage.File),
 	}
 }
 
-func (d *Directory) CreateDirectory(_ context.Context, name string) (storage.Directory, error) {
+func (d *directory) CreateDirectory(_ context.Context, name string) (storage.Directory, error) {
 	// Check if there is a file with this name
 	if _, ok := d.files[name]; ok {
 		return nil, fmt.Errorf("%w: %q", storage.ErrFileAlreadyExists, name)
@@ -39,7 +39,7 @@ func (d *Directory) CreateDirectory(_ context.Context, name string) (storage.Dir
 	return nd, nil
 }
 
-func (d *Directory) GetDirectory(_ context.Context, name string) (storage.Directory, error) {
+func (d *directory) GetDirectory(_ context.Context, name string) (storage.Directory, error) {
 	// Check if there is a file with this name
 	if _, ok := d.files[name]; ok {
 		return nil, fmt.Errorf("%w: %q", storage.ErrIsFile, name)
@@ -54,11 +54,11 @@ func (d *Directory) GetDirectory(_ context.Context, name string) (storage.Direct
 	return nd, nil
 }
 
-func (d *Directory) GetInfo(_ context.Context) (info.Directory, error) {
+func (d *directory) GetInfo(_ context.Context) (info.Directory, error) {
 	return info.Directory{}, nil
 }
 
-func (d *Directory) CreateFile(_ context.Context, name string, chunkSize int) (storage.File, error) {
+func (d *directory) CreateFile(_ context.Context, name string, chunkSize int) (storage.File, error) {
 	// Check if there is a file with this name
 	if _, ok := d.files[name]; ok {
 		return nil, fmt.Errorf("%w: %q", storage.ErrFileAlreadyExists, name)
@@ -80,7 +80,7 @@ func (d *Directory) CreateFile(_ context.Context, name string, chunkSize int) (s
 	return f, nil
 }
 
-func (d *Directory) GetFile(ctx context.Context, name string) (storage.File, error) {
+func (d *directory) GetFile(ctx context.Context, name string) (storage.File, error) {
 	// Check if there is a directory with this name
 	if _, ok := d.directories[name]; ok {
 		return nil, fmt.Errorf("%w: %q", storage.ErrIsDirectory, name)
@@ -95,11 +95,11 @@ func (d *Directory) GetFile(ctx context.Context, name string) (storage.File, err
 	return f, nil
 }
 
-func (d *Directory) ListFiles(ctx context.Context) (map[string]storage.File, error) {
+func (d *directory) ListFiles(ctx context.Context) (map[string]storage.File, error) {
 	return maps.Clone(d.files), nil
 }
 
-func (d *Directory) RemoveDirectory(ctx context.Context, name string) error {
+func (d *directory) RemoveDirectory(ctx context.Context, name string) error {
 	// Check if there is a file with this name
 	if _, ok := d.files[name]; ok {
 		return fmt.Errorf("%w: %q", storage.ErrIsFile, name)
@@ -116,11 +116,11 @@ func (d *Directory) RemoveDirectory(ctx context.Context, name string) error {
 	return nil
 }
 
-func (d *Directory) ListDirectories(ctx context.Context) (map[string]storage.Directory, error) {
+func (d *directory) ListDirectories(ctx context.Context) (map[string]storage.Directory, error) {
 	return maps.Clone(d.directories), nil
 }
 
-func (d *Directory) RemoveFile(ctx context.Context, name string) error {
+func (d *directory) RemoveFile(ctx context.Context, name string) error {
 	// Check if there is a directory with this name
 	if _, ok := d.directories[name]; ok {
 		return fmt.Errorf("%w: %q", storage.ErrIsDirectory, name)
@@ -137,10 +137,31 @@ func (d *Directory) RemoveFile(ctx context.Context, name string) error {
 	return nil
 }
 
-func (d *Directory) RenameFile(ctx context.Context, name string, newParent storage.Directory, newName string, noReplace bool) error {
-	return fmt.Errorf("not implemented")
+func (d *directory) RenameFile(ctx context.Context, name string, newParent storage.Directory, newName string, noReplace bool) error {
+	// Check if there is a file with this name
+	if _, ok := d.files[name]; !ok {
+		return fmt.Errorf("%w: %q", storage.ErrFileNotFound, name)
+	}
+
+	// Check if there is a directory with the new name
+	_, directoryExists := newParent.(*directory).directories[newName]
+	if directoryExists {
+		return fmt.Errorf("%w: %q", storage.ErrDirectoryAlreadyExists, newName)
+	}
+
+	// Check if there is a file with the new name
+	_, fileExists := newParent.(*directory).files[newName]
+	if fileExists && !noReplace {
+		return fmt.Errorf("%w: %q", storage.ErrFileAlreadyExists, newName)
+	}
+
+	// Move the file
+	newParent.(*directory).files[newName] = d.files[name]
+	delete(d.files, name)
+
+	return nil
 }
 
-func (d *Directory) RenameDirectory(ctx context.Context, name string, newParent storage.Directory, newName string, noReplace bool) error {
+func (d *directory) RenameDirectory(ctx context.Context, name string, newParent storage.Directory, newName string, noReplace bool) error {
 	return fmt.Errorf("not implemented")
 }
