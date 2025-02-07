@@ -207,3 +207,59 @@ func (suite *DirectorySuite) TestRenameFileOnExistingFileWithReplace() {
 	suite.Require().NoError(err)
 	suite.Require().Equal(4096, info.ChunkSize)
 }
+
+func (suite *DirectorySuite) TestRenameDirectoryOnSameDirectory() {
+	_, err := suite.Directory.CreateDirectory(context.Background(), "directory")
+	suite.Require().NoError(err)
+
+	err = suite.Directory.RenameDirectory(context.Background(), "directory", suite.Directory, "newDirectory", true)
+	suite.Require().NoError(err)
+
+	_, err = suite.Directory.GetDirectory(context.Background(), "directory")
+	suite.Require().ErrorIs(err, storage.ErrDirectoryNotFound)
+
+	_, err = suite.Directory.GetDirectory(context.Background(), "newDirectory")
+	suite.Require().NoError(err)
+}
+
+func (suite *DirectorySuite) TestRenameDirectoryOnDifferentDirectory() {
+	_, err := suite.Directory.CreateDirectory(context.Background(), "directory")
+	suite.Require().NoError(err)
+
+	dir, err := suite.Directory.CreateDirectory(context.Background(), "dir")
+	suite.Require().NoError(err)
+
+	err = suite.Directory.RenameDirectory(context.Background(), "directory", dir, "newDirectory", true)
+	suite.Require().NoError(err)
+
+	_, err = suite.Directory.GetDirectory(context.Background(), "directory")
+	suite.Require().ErrorIs(err, storage.ErrDirectoryNotFound)
+
+	_, err = dir.GetDirectory(context.Background(), "newDirectory")
+	suite.Require().NoError(err)
+}
+
+func (suite *DirectorySuite) TestRenameDirectoryOnExistingDirectoryWithNoReplace() {
+	_, err := suite.Directory.CreateDirectory(context.Background(), "directory")
+	suite.Require().NoError(err)
+
+	_, err = suite.Directory.CreateDirectory(context.Background(), "newDirectory")
+	suite.Require().NoError(err)
+
+	err = suite.Directory.RenameDirectory(context.Background(), "directory", suite.Directory, "newDirectory", false)
+	suite.Require().ErrorIs(err, storage.ErrDirectoryAlreadyExists)
+}
+
+func (suite *DirectorySuite) TestRenameDirectoryOnExistingDirectoryWithReplace() {
+	_, err := suite.Directory.CreateDirectory(context.Background(), "directory")
+	suite.Require().NoError(err)
+
+	_, err = suite.Directory.CreateDirectory(context.Background(), "newDirectory")
+	suite.Require().NoError(err)
+
+	err = suite.Directory.RenameDirectory(context.Background(), "directory", suite.Directory, "newDirectory", true)
+	suite.Require().NoError(err)
+
+	_, err = suite.Directory.GetDirectory(context.Background(), "directory")
+	suite.Require().ErrorIs(err, storage.ErrDirectoryNotFound)
+}

@@ -3,7 +3,6 @@ package layer
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/lerenn/chonkfs/pkg/info"
 	"github.com/lerenn/chonkfs/pkg/storage"
@@ -336,5 +335,27 @@ func (d *directory) RenameDirectory(
 	newName string,
 	noReplace bool,
 ) error {
-	return fmt.Errorf("not implemented")
+	// Rename the directory on the underlayer
+	if d.underlayer != nil {
+		// Get new parent underlayer
+		newParentUnderlayer := newParent.(*directory).underlayer
+
+		// Rename the directory on the underlayer
+		if err := d.underlayer.RenameDirectory(ctx, name, newParentUnderlayer, newName, noReplace); err != nil {
+			return err
+		}
+	}
+
+	// Get new parent backend
+	newParentBackend := newParent.(*directory).backend
+
+	// Rename the directory on the backend
+	err := d.backend.RenameDirectory(ctx, name, newParentBackend, newName, noReplace)
+	if err == nil {
+		return nil
+	} else if errors.Is(err, storage.ErrDirectoryNotFound) && d.underlayer != nil {
+		return nil
+	}
+
+	return err
 }

@@ -163,5 +163,26 @@ func (d *directory) RenameFile(ctx context.Context, name string, newParent stora
 }
 
 func (d *directory) RenameDirectory(ctx context.Context, name string, newParent storage.Directory, newName string, noReplace bool) error {
-	return fmt.Errorf("not implemented")
+	// Check if there is a directory with this name
+	if _, ok := d.directories[name]; !ok {
+		return fmt.Errorf("%w: %q", storage.ErrDirectoryNotFound, name)
+	}
+
+	// Check if there is a directory with the new name
+	_, directoryExists := newParent.(*directory).directories[newName]
+	if directoryExists && !noReplace {
+		return fmt.Errorf("%w: %q", storage.ErrDirectoryAlreadyExists, newName)
+	}
+
+	// Check if there is a file with the new name
+	_, fileExists := newParent.(*directory).files[newName]
+	if fileExists {
+		return fmt.Errorf("%w: %q", storage.ErrFileAlreadyExists, newName)
+	}
+
+	// Move the directory
+	newParent.(*directory).directories[newName] = d.directories[name]
+	delete(d.directories, name)
+
+	return nil
 }
