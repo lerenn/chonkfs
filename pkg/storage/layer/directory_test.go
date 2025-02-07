@@ -227,3 +227,55 @@ func (suite *DirectorySuite) TestRemoveFileWhenOnlyOnUnderlayer() {
 	_, err = suite.UnderlayerBackEnd.GetFile(context.Background(), "File")
 	suite.Require().ErrorIs(err, storage.ErrFileNotFound)
 }
+
+func (suite *DirectorySuite) TestRenamefileOnBackendAndUnderlayer() {
+	// Create a directory
+	_, err := suite.Directory.CreateFile(context.Background(), "File", 4096)
+	suite.Require().NoError(err)
+
+	// Rename the directory
+	err = suite.Directory.RenameFile(context.Background(), "File", suite.Directory, "File2", false)
+	suite.Require().NoError(err)
+
+	// Check it does not exist on directory backend
+	_, err = suite.DirectoryBackEnd.GetFile(context.Background(), "File")
+	suite.Require().ErrorIs(err, storage.ErrFileNotFound)
+
+	// Check it does not exist on underlayer backend
+	_, err = suite.UnderlayerBackEnd.GetFile(context.Background(), "File")
+	suite.Require().ErrorIs(err, storage.ErrFileNotFound)
+
+	// Check it exists on directory backend
+	_, err = suite.DirectoryBackEnd.GetFile(context.Background(), "File2")
+	suite.Require().NoError(err)
+
+	// Check it exists on underlayer backend
+	_, err = suite.UnderlayerBackEnd.GetFile(context.Background(), "File2")
+	suite.Require().NoError(err)
+}
+
+func (suite *DirectorySuite) TestRenameFileWhenOnlyOnUnderlayer() {
+	// Create a directory on underlayer
+	_, err := suite.Underlayer.CreateFile(context.Background(), "File", 4096)
+	suite.Require().NoError(err)
+
+	// Rename the directory
+	err = suite.Directory.RenameFile(context.Background(), "File", suite.Directory, "File2", false)
+	suite.Require().NoError(err)
+
+	// Check it does not exist on directory
+	_, err = suite.Directory.GetFile(context.Background(), "File")
+	suite.Require().ErrorIs(err, storage.ErrFileNotFound)
+
+	// Check it does not exist on underlayer backend
+	_, err = suite.UnderlayerBackEnd.GetFile(context.Background(), "File")
+	suite.Require().ErrorIs(err, storage.ErrFileNotFound)
+
+	// Check it exists on directory
+	_, err = suite.Directory.GetFile(context.Background(), "File2")
+	suite.Require().NoError(err)
+
+	// Check it exists on underlayer backend
+	_, err = suite.UnderlayerBackEnd.GetFile(context.Background(), "File2")
+	suite.Require().NoError(err)
+}
