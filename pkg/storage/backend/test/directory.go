@@ -68,3 +68,19 @@ func (suite *DirectorySuite) TestListFiles() {
 	suite.Require().Contains(files, "2")
 	suite.Require().Contains(files, "3")
 }
+
+func (suite *DirectorySuite) TestRemoveDirectory() {
+	_, err := suite.Directory.CreateDirectory(context.Background(), "dir")
+	suite.Require().NoError(err)
+
+	err = suite.Directory.RemoveDirectory(context.Background(), "dir")
+	suite.Require().NoError(err)
+
+	_, err = suite.Directory.GetDirectory(context.Background(), "dir")
+	suite.Require().ErrorIs(err, backend.ErrNotFound)
+}
+
+func (suite *DirectorySuite) TestRemoveDirectoryWhenDoesNotExist() {
+	err := suite.Directory.RemoveDirectory(context.Background(), "dir")
+	suite.Require().ErrorIs(err, backend.ErrNotFound)
+}

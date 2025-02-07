@@ -98,3 +98,20 @@ func (d *Directory) GetFile(ctx context.Context, name string) (backend.File, err
 func (d *Directory) ListFiles(ctx context.Context) (map[string]backend.File, error) {
 	return maps.Clone(d.files), nil
 }
+
+func (d *Directory) RemoveDirectory(ctx context.Context, name string) error {
+	// Check if there is a file with this name
+	if _, ok := d.files[name]; ok {
+		return fmt.Errorf("%w: %q", backend.ErrIsFile, name)
+	}
+
+	// Check if there is a directory with this name
+	if _, ok := d.directories[name]; !ok {
+		return fmt.Errorf("%w: %q", backend.ErrNotFound, name)
+	}
+
+	// Remove the directory
+	delete(d.directories, name)
+
+	return nil
+}

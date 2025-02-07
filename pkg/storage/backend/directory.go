@@ -10,6 +10,7 @@ type Directory interface {
 	CreateDirectory(ctx context.Context, name string) (Directory, error)
 	GetInfo(ctx context.Context) (info.Directory, error)
 	GetDirectory(ctx context.Context, name string) (Directory, error)
+	RemoveDirectory(ctx context.Context, name string) error
 
 	CreateFile(ctx context.Context, name string, chunkSize int) (File, error)
 	GetFile(ctx context.Context, name string) (File, error)

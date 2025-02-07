@@ -229,8 +229,23 @@ func (d *directory) CreateFile(ctx context.Context, name string, chunkSize int) 
 }
 
 // RemoveDirectory removes a child directory of the directory.
-func (d *directory) RemoveDirectory(_ context.Context, _ string) error {
-	return fmt.Errorf("not implemented")
+func (d *directory) RemoveDirectory(ctx context.Context, name string) error {
+	// Remove the directory from the underlayer
+	if d.underlayer != nil {
+		if err := d.underlayer.RemoveDirectory(ctx, name); err != nil {
+			return err
+		}
+	}
+
+	// Remove the directory from the backend
+	err := d.backend.RemoveDirectory(ctx, name)
+	if err == nil {
+		return nil
+	} else if errors.Is(err, backend.ErrNotFound) && d.underlayer != nil {
+		return nil
+	}
+
+	return err
 }
 
 // RemoveFile removes a child file of the directory.
