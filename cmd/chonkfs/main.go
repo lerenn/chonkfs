@@ -8,9 +8,9 @@ import (
 
 	"github.com/hanwen/go-fuse/v2/fs"
 	"github.com/lerenn/chonkfs/pkg/chonker"
+	"github.com/lerenn/chonkfs/pkg/fuse"
 	"github.com/lerenn/chonkfs/pkg/storage"
 	"github.com/lerenn/chonkfs/pkg/storage/backend/mem"
-	"github.com/lerenn/chonkfs/pkg/wrapper"
 	"github.com/spf13/cobra"
 )
 
@@ -49,9 +49,9 @@ var rootCmd = &cobra.Command{
 		}
 
 		// Create wrapper for FUSE
-		w := wrapper.NewDirectory(c,
-			wrapper.WithDirectoryLogger(logger),
-			wrapper.WithDirectoryChunkSize(chunkSize))
+		w := fuse.NewDirectory(c,
+			fuse.WithDirectoryLogger(logger),
+			fuse.WithDirectoryChunkSize(chunkSize))
 
 		// Create FUSE server
 		to := time.Duration(1)
@@ -78,7 +78,7 @@ func main() {
 	// Set flags
 	rootCmd.PersistentFlags().StringVarP(&path, "path", "p", "", "Set mount path")
 	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "Enable debug mode")
-	rootCmd.PersistentFlags().IntVarP(&chunkSize, "chunk-size", "s", wrapper.DefaultChunkSize, "Set chunk size")
+	rootCmd.PersistentFlags().IntVarP(&chunkSize, "chunk-size", "s", fuse.DefaultChunkSize, "Set chunk size")
 
 	// Execute command
 	if err := rootCmd.Execute(); err != nil {

@@ -1,4 +1,4 @@
-package wrapper
+package fuse
 
 import (
 	"context"

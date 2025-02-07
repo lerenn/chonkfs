@@ -10,9 +10,9 @@ import (
 	"github.com/hanwen/go-fuse/v2/fs"
 	"github.com/hanwen/go-fuse/v2/fuse"
 	"github.com/lerenn/chonkfs/pkg/chonker"
+	fuse1 "github.com/lerenn/chonkfs/pkg/fuse"
 	"github.com/lerenn/chonkfs/pkg/storage"
 	"github.com/lerenn/chonkfs/pkg/storage/backend/mem"
-	"github.com/lerenn/chonkfs/pkg/wrapper"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -51,8 +51,8 @@ func (suite *Suite) createChonkFS(
 	suite.Require().NoError(err)
 
 	// Create a chonkfs
-	chFS := wrapper.NewDirectory(backend,
-		wrapper.WithDirectoryChunkSize(chunkSize))
+	chFS := fuse1.NewDirectory(backend,
+		fuse1.WithDirectoryChunkSize(chunkSize))
 
 	// Mount the ChonkFS
 	server, err = fs.Mount(path, chFS, &fs.Options{
