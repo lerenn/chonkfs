@@ -1,12 +1,12 @@
 package test
 
 import (
-	"github.com/lerenn/chonkfs/pkg/storage/backend"
+	"github.com/lerenn/chonkfs/pkg/storage"
 	"github.com/stretchr/testify/suite"
 )
 
 type FileSuite struct {
-	Directory backend.Directory
+	Directory storage.Directory
 	suite.Suite
 }
 
@@ -25,7 +25,7 @@ func (suite *FileSuite) TestCreateFileOnExistingFile() {
 	suite.Require().NoError(err)
 
 	_, err = suite.Directory.CreateFile(nil, "toto", 4096)
-	suite.Require().ErrorIs(err, backend.ErrFileAlreadyExists)
+	suite.Require().ErrorIs(err, storage.ErrFileAlreadyExists)
 }
 
 func (suite *FileSuite) TestCreateFileOnExistingDirectory() {
@@ -33,12 +33,12 @@ func (suite *FileSuite) TestCreateFileOnExistingDirectory() {
 	suite.Require().NoError(err)
 
 	_, err = suite.Directory.CreateFile(nil, "toto", 4096)
-	suite.Require().ErrorIs(err, backend.ErrDirectoryAlreadyExists)
+	suite.Require().ErrorIs(err, storage.ErrDirectoryAlreadyExists)
 }
 
 func (suite *FileSuite) TestCreateFileWithZeroChunkSize() {
 	_, err := suite.Directory.CreateFile(nil, "toto", 0)
-	suite.Require().ErrorIs(err, backend.ErrInvalidChunkSize)
+	suite.Require().ErrorIs(err, storage.ErrInvalidChunkSize)
 }
 
 func (suite *FileSuite) TestIsFileWhenIsDirectory() {
@@ -46,7 +46,7 @@ func (suite *FileSuite) TestIsFileWhenIsDirectory() {
 	suite.Require().NoError(err)
 
 	_, err = suite.Directory.GetFile(nil, "toto")
-	suite.Require().ErrorIs(err, backend.ErrIsDirectory)
+	suite.Require().ErrorIs(err, storage.ErrIsDirectory)
 }
 
 func (suite *FileSuite) TestGetInfoFromEmptyFile() {
@@ -56,5 +56,6 @@ func (suite *FileSuite) TestGetInfoFromEmptyFile() {
 	info, err := f.GetInfo(nil)
 	suite.Require().NoError(err)
 
-	suite.EqualValues(0, info.ChunksCount)
+	suite.Require().Equal(0, info.ChunksCount)
+	suite.Require().Equal(4096, info.ChunkSize)
 }

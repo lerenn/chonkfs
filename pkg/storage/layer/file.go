@@ -1,4 +1,4 @@
-package storage
+package layer
 
 import (
 	"context"
@@ -6,22 +6,22 @@ import (
 	"fmt"
 
 	"github.com/lerenn/chonkfs/pkg/info"
-	"github.com/lerenn/chonkfs/pkg/storage/backend"
+	"github.com/lerenn/chonkfs/pkg/storage"
 )
 
-var _ File = (*file)(nil)
+var _ storage.File = (*file)(nil)
 
 type fileOptions struct {
-	Underlayer File
+	Underlayer storage.File
 }
 
 type file struct {
 	chunkSize  int
-	backend    backend.File
-	underlayer File
+	backend    storage.File
+	underlayer storage.File
 }
 
-func newFile(backend backend.File, chunkSize int, opts *fileOptions) *file {
+func newFile(backend storage.File, chunkSize int, opts *fileOptions) *file {
 	f := &file{
 		chunkSize: chunkSize,
 		backend:   backend,
@@ -34,26 +34,16 @@ func newFile(backend backend.File, chunkSize int, opts *fileOptions) *file {
 	return f
 }
 
-// Underlayer returns the underlayer file.
-func (f *file) Underlayer() File {
-	return f.underlayer
-}
-
-// ChunkSize returns the chunk size.
-func (f *file) ChunkSize() int {
-	return f.chunkSize
-}
-
 // GetInfo returns the file info.
 func (f *file) GetInfo(ctx context.Context) (info.File, error) {
 	if fileInfo, err := f.backend.GetInfo(ctx); err == nil {
 		return fileInfo, nil
-	} else if !errors.Is(err, backend.ErrNotFound) {
-		return info.File{}, fmt.Errorf("%w: %w", ErrStorage, err)
+	} else if !errors.Is(err, storage.ErrFileNotFound) {
+		return info.File{}, fmt.Errorf("%w: %w", storage.ErrStorage, err)
 	}
 
 	if f.underlayer == nil {
-		return info.File{}, ErrFileNotExists
+		return info.File{}, storage.ErrFileNotFound
 	}
 
 	return f.underlayer.GetInfo(ctx)

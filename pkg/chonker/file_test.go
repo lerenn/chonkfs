@@ -4,8 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/lerenn/chonkfs/pkg/storage"
-	"github.com/lerenn/chonkfs/pkg/storage/backend/mem"
+	"github.com/lerenn/chonkfs/pkg/storage/mem"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -19,7 +18,7 @@ type FileSuite struct {
 }
 
 func (suite *FileSuite) SetupTest() {
-	d, err := NewDirectory(context.Background(), storage.NewDirectory(mem.NewDirectory(), nil))
+	d, err := NewDirectory(context.Background(), mem.NewDirectory())
 	suite.Require().NoError(err)
 	suite.Directory = d
 }

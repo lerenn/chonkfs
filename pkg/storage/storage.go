@@ -13,7 +13,7 @@ type Directory interface {
 	CreateDirectory(ctx context.Context, name string) (Directory, error)
 	GetDirectory(ctx context.Context, name string) (Directory, error)
 	ListDirectories(ctx context.Context) (map[string]Directory, error)
-	Info(ctx context.Context) (info.Directory, error)
+	GetInfo(ctx context.Context) (info.Directory, error)
 	RemoveDirectory(ctx context.Context, name string) error
 	RenameDirectory(ctx context.Context, name string, newParent Directory, newName string, noReplace bool) error
 
@@ -24,10 +24,6 @@ type Directory interface {
 	CreateFile(ctx context.Context, name string, chunkSize int) (File, error)
 	RemoveFile(ctx context.Context, name string) error
 	RenameFile(ctx context.Context, name string, newParent Directory, newName string, noReplace bool) error
-
-	// Underlayer
-
-	Underlayer() Directory
 }
 
 // File represents a file in the storage.
@@ -37,6 +33,4 @@ type File interface {
 	ResizeChunksNb(ctx context.Context, size int) error
 	ResizeLastChunk(ctx context.Context, size int) (changed int, err error)
 	GetInfo(ctx context.Context) (info.File, error)
-	Underlayer() File
-	ChunkSize() int
 }

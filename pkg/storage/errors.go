@@ -5,14 +5,18 @@ import "fmt"
 var (
 	// ErrStorage regroups errors from storage.
 	ErrStorage = fmt.Errorf("storage error")
-	// ErrDirectoryNotExists happens when the requested directory doesn't exist.
-	ErrDirectoryNotExists = fmt.Errorf("%w: directory does not exist", ErrStorage)
+	// ErrDirectoryNotFound happens when the requested directory doesn't exist.
+	ErrDirectoryNotFound = fmt.Errorf("%w: directory not found", ErrStorage)
 	// ErrDirectoryAlreadyExists happens when an already existing directory is making the operation fails.
 	ErrDirectoryAlreadyExists = fmt.Errorf("%w: directory already exists", ErrStorage)
-	// ErrFileNotExists happens when the requested file doesn't exist.
-	ErrFileNotExists = fmt.Errorf("%w: file does not exist", ErrStorage)
+	// ErrIsDirectory happens when the requested element is a directory.
+	ErrIsDirectory = fmt.Errorf("%w: is a directory", ErrStorage)
+	// ErrFileNotFound happens when the requested file doesn't exist.
+	ErrFileNotFound = fmt.Errorf("%w: file not found", ErrStorage)
 	// ErrFileAlreadyExists happens when an already existing file is making the operation fails.
 	ErrFileAlreadyExists = fmt.Errorf("%w: file already exists", ErrStorage)
+	// ErrIsFile happens when the requested element is a file.
+	ErrIsFile = fmt.Errorf("%w: is a file", ErrStorage)
 	// ErrInvalidChunkNb happens when the chunk number is invalid.
 	ErrInvalidChunkNb = fmt.Errorf("%w: invalid chunk number", ErrStorage)
 	// ErrInvalidStartOffset happens when the start offset is invalid.
