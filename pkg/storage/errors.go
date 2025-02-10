@@ -19,14 +19,19 @@ var (
 	ErrIsFile = fmt.Errorf("%w: is a file", ErrStorage)
 	// ErrInvalidChunkNb happens when the chunk number is invalid.
 	ErrInvalidChunkNb = fmt.Errorf("%w: invalid chunk number", ErrStorage)
-	// ErrInvalidStartOffset happens when the start offset is invalid.
-	ErrInvalidStartOffset = fmt.Errorf("%w: invalid start offset", ErrStorage)
-	// ErrInvalidEndOffset happens when the end offset is invalid.
-	ErrInvalidEndOffset = fmt.Errorf("%w: invalid end offset", ErrStorage)
+	// ErrInvalidOffset happens when the offset is invalid.
+	ErrInvalidOffset = fmt.Errorf("%w: invalid offset", ErrStorage)
+	// ErrRequestTooBig happens when the request is too big.
+	ErrRequestTooBig = fmt.Errorf("%w: request too big", ErrStorage)
 	// ErrInvalidChunkSize happens when the chunk size is invalid.
 	ErrInvalidChunkSize = fmt.Errorf("%w: invalid chunk size", ErrStorage)
 	// ErrNoChunk happens when there is no chunk in the file.
 	ErrNoChunk = fmt.Errorf("%w: no chunk in file", ErrStorage)
 	// ErrLastChunkNotFull happens when the last chunk is not full.
 	ErrLastChunkNotFull = fmt.Errorf("%w: last chunk is not full", ErrStorage)
+	// ErrChunkNotFound happens when the chunk is not present on the medium, but
+	// still valid regarding metadata.
+	ErrChunkNotFound = fmt.Errorf("%w: chunk not found", ErrStorage)
+	// ErrChunkAlreadyExists happens when the chunk already exists and cannot be imported.
+	ErrChunkAlreadyExists = fmt.Errorf("%w: chunk already exists", ErrStorage)
 )

@@ -16,15 +16,15 @@ func TestFileSuite(t *testing.T) {
 }
 
 type FileSuite struct {
-	BackEnd    storage.Directory
+	Upperlayer storage.Directory
 	Underlayer storage.Directory
 	test.FileSuite
 }
 
 func (suite *FileSuite) SetupTest() {
-	suite.BackEnd = mem.NewDirectory()
+	suite.Upperlayer = mem.NewDirectory()
 	suite.Underlayer = mem.NewDirectory()
-	suite.Directory = NewDirectory(suite.BackEnd, suite.Underlayer)
+	suite.Directory = NewDirectory(suite.Upperlayer, suite.Underlayer)
 }
 
 func (suite *FileSuite) TestCreateFileAndCheckUnderlayer() {
@@ -68,8 +68,8 @@ func (suite *FileSuite) TestResizeChunksNbOnBackendAndUnderlayer() {
 	err = file.ResizeChunksNb(context.Background(), 3)
 	suite.Require().NoError(err)
 
-	// Check the file on the backend
-	_, err = suite.BackEnd.GetFile(context.Background(), "FileA")
+	// Check the file on the upperlayer
+	_, err = suite.Upperlayer.GetFile(context.Background(), "FileA")
 	suite.Require().NoError(err)
 	info, err := file.GetInfo(context.Background())
 	suite.Require().NoError(err)
@@ -129,8 +129,8 @@ func (suite *FileSuite) TestResizeLastChunkOnBackendAndUnderlayer() {
 	suite.Require().NoError(err)
 	suite.Require().Equal(2048-4096, changed)
 
-	// Check the file on the backend
-	dfile, err := suite.BackEnd.GetFile(context.Background(), "FileA")
+	// Check the file on the upperlayer
+	dfile, err := suite.Upperlayer.GetFile(context.Background(), "FileA")
 	suite.Require().NoError(err)
 	info, err := dfile.GetInfo(context.Background())
 	suite.Require().NoError(err)
@@ -208,4 +208,60 @@ func (suite *FileSuite) TestResizeLastChunkWhenUnderlayerOnly() {
 	info, err = ufile.GetInfo(context.Background())
 	suite.Require().NoError(err)
 	suite.Require().Equal(2048, info.LastChunkSize)
+}
+
+func (suite *FileSuite) TestReadChunkWhenUnderlayerOnly() {
+	// Create a file on underlayer
+	ufile, err := suite.Underlayer.CreateFile(context.Background(), "FileA", info.File{
+		ChunkSize: 4096,
+	})
+	suite.Require().NoError(err)
+
+	// Add a chunk
+	err = ufile.ResizeChunksNb(context.Background(), 1)
+	suite.Require().NoError(err)
+
+	// Write a chunk
+	written, err := ufile.WriteChunk(context.Background(), 0, []byte("Hello, World!"), 0)
+	suite.Require().NoError(err)
+	suite.Require().Equal(13, written)
+
+	// Get file from upper layer
+	file, err := suite.Directory.GetFile(context.Background(), "FileA")
+	suite.Require().NoError(err)
+
+	// Read a chunk from upper layer
+	data := make([]byte, 4096)
+	read, err := file.ReadChunk(context.Background(), 0, data, 0)
+	suite.Require().NoError(err)
+	suite.Require().Equal(4096, read)
+	suite.Require().Equal("Hello, World!", string(data[:13]))
+}
+
+func (suite *FileSuite) TestWriteChunkWhenUnderlayerOnly() {
+	// Create a file on underlayer
+	ufile, err := suite.Underlayer.CreateFile(context.Background(), "FileA", info.File{
+		ChunkSize: 4096,
+	})
+	suite.Require().NoError(err)
+
+	// Add a chunk
+	err = ufile.ResizeChunksNb(context.Background(), 1)
+	suite.Require().NoError(err)
+
+	// Get file from upper layer
+	file, err := suite.Directory.GetFile(context.Background(), "FileA")
+	suite.Require().NoError(err)
+
+	// Write a chunk from upper layer
+	written, err := file.WriteChunk(context.Background(), 0, []byte("Hello, World!"), 0)
+	suite.Require().NoError(err)
+	suite.Require().Equal(13, written)
+
+	// Read a chunk from underlayer
+	data := make([]byte, 4096)
+	read, err := ufile.ReadChunk(context.Background(), 0, data, 0)
+	suite.Require().NoError(err)
+	suite.Require().Equal(4096, read)
+	suite.Require().Equal("Hello, World!", string(data[:13]))
 }

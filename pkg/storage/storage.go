@@ -28,8 +28,9 @@ type Directory interface {
 
 // File represents a file in the storage.
 type File interface {
-	WriteChunk(ctx context.Context, chunkIndex int, data []byte, offset int) (int, error)
-	ReadChunk(ctx context.Context, chunkIndex int, data []byte, offset int) (int, error)
+	ImportChunk(ctx context.Context, index int, data []byte) error
+	WriteChunk(ctx context.Context, index int, data []byte, offset int) (int, error)
+	ReadChunk(ctx context.Context, index int, data []byte, offset int) (int, error)
 	ResizeChunksNb(ctx context.Context, size int) error
 	ResizeLastChunk(ctx context.Context, size int) (changed int, err error)
 	GetInfo(ctx context.Context) (info.File, error)

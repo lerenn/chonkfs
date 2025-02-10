@@ -17,11 +17,11 @@ func (f *file) GetInfo(_ context.Context) (info.File, error) {
 	return info.File{}, fmt.Errorf("not implemented")
 }
 
-func (f *file) WriteChunk(ctx context.Context, chunkIndex int, data []byte, offset int) (int, error) {
+func (f *file) WriteChunk(ctx context.Context, index int, data []byte, offset int) (int, error) {
 	return 0, fmt.Errorf("not implemented")
 }
 
-func (f *file) ReadChunk(ctx context.Context, chunkIndex int, data []byte, offset int) (int, error) {
+func (f *file) ReadChunk(ctx context.Context, index int, data []byte, offset int) (int, error) {
 	return 0, fmt.Errorf("not implemented")
 }
 

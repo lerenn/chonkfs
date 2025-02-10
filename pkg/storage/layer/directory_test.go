@@ -16,15 +16,15 @@ func TestDirectorySuite(t *testing.T) {
 }
 
 type DirectorySuite struct {
-	BackEnd    storage.Directory
+	Upperlayer storage.Directory
 	Underlayer storage.Directory
 	test.DirectorySuite
 }
 
 func (suite *DirectorySuite) SetupTest() {
-	suite.BackEnd = mem.NewDirectory()
+	suite.Upperlayer = mem.NewDirectory()
 	suite.Underlayer = mem.NewDirectory()
-	suite.Directory = NewDirectory(suite.BackEnd, suite.Underlayer)
+	suite.Directory = NewDirectory(suite.Upperlayer, suite.Underlayer)
 }
 
 func (suite *DirectorySuite) TestGetInfoWhenDirectoryExistsOnlyOnUnderlayer() {
@@ -51,8 +51,8 @@ func (suite *DirectorySuite) TestRemoveDirectoryOnBackendAndUnderlayer() {
 	err = suite.Directory.RemoveDirectory(context.Background(), "Directory")
 	suite.Require().NoError(err)
 
-	// Check it does not exist on directory backend
-	_, err = suite.BackEnd.GetDirectory(context.Background(), "Directory")
+	// Check it does not exist on directory upperlayer
+	_, err = suite.Upperlayer.GetDirectory(context.Background(), "Directory")
 	suite.Require().ErrorIs(err, storage.ErrDirectoryNotFound)
 
 	// Check it does not exist on underlayer
@@ -69,8 +69,8 @@ func (suite *DirectorySuite) TestRemoveDirectoryWhenOnlyOnUnderlayer() {
 	err = suite.Directory.RemoveDirectory(context.Background(), "Directory")
 	suite.Require().NoError(err)
 
-	// Check it does not exist on directory backend
-	_, err = suite.BackEnd.GetDirectory(context.Background(), "Directory")
+	// Check it does not exist on directory upperlayer
+	_, err = suite.Upperlayer.GetDirectory(context.Background(), "Directory")
 	suite.Require().ErrorIs(err, storage.ErrDirectoryNotFound)
 
 	// Check it does not exist on underlayer
@@ -145,8 +145,8 @@ func (suite *DirectorySuite) TestCreateDirectory() {
 	_, err := suite.Directory.CreateDirectory(context.Background(), "DirectoryA")
 	suite.Require().NoError(err)
 
-	// Check it exists on directory backend
-	_, err = suite.BackEnd.GetDirectory(context.Background(), "DirectoryA")
+	// Check it exists on directory upperlayer
+	_, err = suite.Upperlayer.GetDirectory(context.Background(), "DirectoryA")
 	suite.Require().NoError(err)
 
 	// Check it exists on underlayer
@@ -210,8 +210,8 @@ func (suite *DirectorySuite) TestRemoveFileOnBackendAndUnderlayer() {
 	err = suite.Directory.RemoveFile(context.Background(), "File")
 	suite.Require().NoError(err)
 
-	// Check it does not exist on directory backend
-	_, err = suite.BackEnd.GetFile(context.Background(), "File")
+	// Check it does not exist on directory upperlayer
+	_, err = suite.Upperlayer.GetFile(context.Background(), "File")
 	suite.Require().ErrorIs(err, storage.ErrFileNotFound)
 
 	// Check it does not exist on underlayer
@@ -230,8 +230,8 @@ func (suite *DirectorySuite) TestRemoveFileWhenOnlyOnUnderlayer() {
 	err = suite.Directory.RemoveFile(context.Background(), "File")
 	suite.Require().NoError(err)
 
-	// Check it does not exist on directory backend
-	_, err = suite.BackEnd.GetFile(context.Background(), "File")
+	// Check it does not exist on directory upperlayer
+	_, err = suite.Upperlayer.GetFile(context.Background(), "File")
 	suite.Require().ErrorIs(err, storage.ErrFileNotFound)
 
 	// Check it does not exist on underlayer
@@ -250,16 +250,16 @@ func (suite *DirectorySuite) TestRenameFileOnBackendAndUnderlayer() {
 	err = suite.Directory.RenameFile(context.Background(), "File", suite.Directory, "File2", false)
 	suite.Require().NoError(err)
 
-	// Check it does not exist on directory backend
-	_, err = suite.BackEnd.GetFile(context.Background(), "File")
+	// Check it does not exist on directory upperlayer
+	_, err = suite.Upperlayer.GetFile(context.Background(), "File")
 	suite.Require().ErrorIs(err, storage.ErrFileNotFound)
 
 	// Check it does not exist on underlayer
 	_, err = suite.Underlayer.GetFile(context.Background(), "File")
 	suite.Require().ErrorIs(err, storage.ErrFileNotFound)
 
-	// Check it exists on directory backend
-	_, err = suite.BackEnd.GetFile(context.Background(), "File2")
+	// Check it exists on directory upperlayer
+	_, err = suite.Upperlayer.GetFile(context.Background(), "File2")
 	suite.Require().NoError(err)
 
 	// Check it exists on underlayer
@@ -304,16 +304,16 @@ func (suite *DirectorySuite) TestRenameOnBackendAndUnderlayer() {
 	err = suite.Directory.RenameDirectory(context.Background(), "Directory", suite.Directory, "Directory2", false)
 	suite.Require().NoError(err)
 
-	// Check it does not exist on directory backend
-	_, err = suite.BackEnd.GetDirectory(context.Background(), "Directory")
+	// Check it does not exist on directory upperlayer
+	_, err = suite.Upperlayer.GetDirectory(context.Background(), "Directory")
 	suite.Require().ErrorIs(err, storage.ErrDirectoryNotFound)
 
 	// Check it does not exist on underlayer
 	_, err = suite.Underlayer.GetDirectory(context.Background(), "Directory")
 	suite.Require().ErrorIs(err, storage.ErrDirectoryNotFound)
 
-	// Check it exists on directory backend
-	_, err = suite.BackEnd.GetDirectory(context.Background(), "Directory2")
+	// Check it exists on directory upperlayer
+	_, err = suite.Upperlayer.GetDirectory(context.Background(), "Directory2")
 	suite.Require().NoError(err)
 
 	// Check it exists on underlayer
