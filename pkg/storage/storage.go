@@ -21,7 +21,7 @@ type Directory interface {
 
 	GetFile(ctx context.Context, name string) (File, error)
 	ListFiles(ctx context.Context) (map[string]File, error)
-	CreateFile(ctx context.Context, name string, chunkSize int) (File, error)
+	CreateFile(ctx context.Context, name string, info info.File) (File, error)
 	RemoveFile(ctx context.Context, name string) error
 	RenameFile(ctx context.Context, name string, newParent Directory, newName string, noReplace bool) error
 }

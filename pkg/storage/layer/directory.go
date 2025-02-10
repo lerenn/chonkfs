@@ -10,64 +10,36 @@ import (
 
 var _ storage.Directory = (*directory)(nil)
 
-type DirectoryOptions struct {
-	Underlayer storage.Directory
-}
-
 type directory struct {
 	backend    storage.Directory
 	underlayer storage.Directory
 }
 
-func NewDirectory(backend storage.Directory, opts *DirectoryOptions) *directory {
-	d := &directory{
-		backend: backend,
+func NewDirectory(backend storage.Directory, underlayer storage.Directory) *directory {
+	return &directory{
+		backend:    backend,
+		underlayer: underlayer,
 	}
-
-	if opts != nil {
-		d.underlayer = opts.Underlayer
-	}
-
-	return d
 }
 
 // CreateDirectory creates a directory.
 func (d *directory) CreateDirectory(ctx context.Context, name string) (storage.Directory, error) {
-	var child storage.Directory
+	var underlayerChild storage.Directory
 
-	// Try to get from backend
-	_, err := d.backend.GetDirectory(ctx, name)
-	switch {
-	case err == nil:
-		// Directory already exists
-		return nil, storage.ErrDirectoryAlreadyExists
-	case errors.Is(err, storage.ErrIsFile):
-		// File with the same name already exists
-		return nil, storage.ErrFileAlreadyExists
-	case !errors.Is(err, storage.ErrDirectoryNotFound):
-		// Unexpected error
+	// Create the directory on the underlayer
+	underlayerChild, err := d.underlayer.CreateDirectory(ctx, name)
+	if err != nil {
 		return nil, err
 	}
 
-	// If there is an underlayer
-	if d.underlayer != nil {
-		// Create the directory on it
-		child, err = d.underlayer.CreateDirectory(ctx, name)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	// Create the directory on the backend
-	dir, err := d.backend.CreateDirectory(ctx, name)
+	backendChild, err := d.backend.CreateDirectory(ctx, name)
 	if err != nil {
 		return nil, err
 	}
 
 	// Return the new directory
-	return NewDirectory(dir, &DirectoryOptions{
-		Underlayer: child,
-	}), nil
+	return NewDirectory(backendChild, underlayerChild), nil
 }
 
 // GetInfo returns the directory info.
@@ -83,30 +55,33 @@ func (d *directory) ListFiles(ctx context.Context) (map[string]storage.File, err
 		return nil, err
 	}
 
-	// Create the file representation
+	// Get the files
 	files := make(map[string]storage.File, len(backendFiles))
-	for n, f := range backendFiles {
-		// Get info
-		info, err := f.GetInfo(ctx)
+	for n := range backendFiles {
+		f, err := d.GetFile(ctx, n)
 		if err != nil {
 			return nil, err
 		}
-
-		// Create the file representation
-		files[n] = newFile(f, info.ChunkSize, nil)
+		files[n] = f
 	}
 
 	// Get underlayer files
-	if d.underlayer != nil {
-		underlayer, err := d.underlayer.ListFiles(ctx)
+	underlayer, err := d.underlayer.ListFiles(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Merge the two maps
+	for n := range underlayer {
+		if _, ok := files[n]; ok {
+			continue
+		}
+
+		f, err := d.GetFile(ctx, n)
 		if err != nil {
 			return nil, err
 		}
-
-		// Merge the two maps
-		for k, v := range underlayer {
-			files[k] = v
-		}
+		files[n] = f
 	}
 
 	return files, nil
@@ -118,24 +93,21 @@ func (d *directory) GetDirectory(ctx context.Context, name string) (storage.Dire
 	var err error
 
 	// Get the directory from the underlayer
-	if d.underlayer != nil {
-		underlayer, err = d.underlayer.GetDirectory(ctx, name)
-		if err != nil {
-			return nil, err
-		}
+	underlayer, err = d.underlayer.GetDirectory(ctx, name)
+	if err != nil {
+		return nil, err
 	}
 
 	// Get the directory from the backend
-	if _, err := d.backend.GetDirectory(ctx, name); err != nil {
+	backend, err := d.backend.GetDirectory(ctx, name)
+	if err != nil {
 		if !errors.Is(err, storage.ErrDirectoryNotFound) || underlayer == nil {
 			return nil, err
 		}
 	}
 
 	// Return the directory
-	return NewDirectory(d.backend, &DirectoryOptions{
-		Underlayer: underlayer,
-	}), nil
+	return NewDirectory(backend, underlayer), nil
 }
 
 // GetFile returns a child file.
@@ -144,19 +116,17 @@ func (d *directory) GetFile(ctx context.Context, name string) (storage.File, err
 	var err error
 
 	// Get the directory from the underlayer
-	if d.underlayer != nil {
-		underlayer, err = d.underlayer.GetFile(ctx, name)
-		if err != nil {
-			return nil, err
-		}
+	underlayer, err = d.underlayer.GetFile(ctx, name)
+	if err != nil {
+		return nil, err
 	}
 
 	// Get the directory from the backend
 	var info info.File
 	backendFile, err := d.backend.GetFile(ctx, name)
 	if err != nil {
-		// If there is an error, or if the file doesn't exist and there is no underlayer, return error
-		if !errors.Is(err, storage.ErrFileNotFound) || underlayer == nil {
+		// If there is an error and it's not a file not found error
+		if !errors.Is(err, storage.ErrFileNotFound) {
 			return nil, err
 		}
 
@@ -167,7 +137,7 @@ func (d *directory) GetFile(ctx context.Context, name string) (storage.File, err
 		}
 
 		// Create a new file on the backend
-		backendFile, err = d.backend.CreateFile(ctx, name, info.ChunkSize)
+		backendFile, err = d.backend.CreateFile(ctx, name, info)
 		if err != nil {
 			return nil, err
 		}
@@ -180,9 +150,7 @@ func (d *directory) GetFile(ctx context.Context, name string) (storage.File, err
 	}
 
 	// Return the directory
-	return newFile(backendFile, info.ChunkSize, &fileOptions{
-		Underlayer: underlayer,
-	}), nil
+	return newFile(backendFile, underlayer, info), nil
 }
 
 // ListDirectories returns a map of directories.
@@ -193,81 +161,68 @@ func (d *directory) ListDirectories(ctx context.Context) (map[string]storage.Dir
 		return nil, err
 	}
 
-	// Create the file representation
+	// Get the directories
 	directories := make(map[string]storage.Directory, len(backendDirectories))
-	for n, d := range backendDirectories {
-		directories[n] = NewDirectory(d, nil)
-	}
-
-	// Get underlayer files
-	if d.underlayer != nil {
-		underlayer, err := d.underlayer.ListDirectories(ctx)
+	for n := range backendDirectories {
+		dir, err := d.GetDirectory(ctx, n)
 		if err != nil {
 			return nil, err
 		}
+		directories[n] = dir
+	}
 
-		// Merge the two maps
-		for k, v := range underlayer {
-			directories[k] = v
+	// Get underlayer directories
+	underlayer, err := d.underlayer.ListDirectories(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Merge the two maps
+	for n := range underlayer {
+		if _, ok := directories[n]; ok {
+			continue
 		}
+
+		dir, err := d.GetDirectory(ctx, n)
+		if err != nil {
+			return nil, err
+		}
+		directories[n] = dir
 	}
 
 	return directories, nil
 }
 
 // CreateFile creates a file in the directory.
-func (d *directory) CreateFile(ctx context.Context, name string, chunkSize int) (storage.File, error) {
-	var child storage.File
+func (d *directory) CreateFile(ctx context.Context, name string, info info.File) (storage.File, error) {
+	var underlayerChild storage.File
 
-	// Try to get from backend
-	_, err := d.backend.GetFile(ctx, name)
-	switch {
-	case err == nil:
-		// File already exists
-		return nil, storage.ErrFileAlreadyExists
-	case errors.Is(err, storage.ErrIsDirectory):
-		// Directory with the same name already exists
-		return nil, storage.ErrDirectoryAlreadyExists
-	case !errors.Is(err, storage.ErrFileNotFound):
-		// Unexpected error
+	// Create the directory on the underlayer
+	underlayerChild, err := d.underlayer.CreateFile(ctx, name, info)
+	if err != nil {
 		return nil, err
 	}
 
-	// If there is an underlayer
-	if d.underlayer != nil {
-		// Create the directory on it
-		child, err = d.underlayer.CreateFile(ctx, name, chunkSize)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	// Create the file on the backend
-	backendFile, err := d.backend.CreateFile(ctx, name, chunkSize)
+	backendFile, err := d.backend.CreateFile(ctx, name, info)
 	if err != nil {
 		return nil, err
 	}
 
 	// Return the new directory
-	return newFile(backendFile, chunkSize, &fileOptions{
-		Underlayer: child,
-	}), nil
+	return newFile(backendFile, underlayerChild, info), nil
 }
 
 // RemoveDirectory removes a child directory of the directory.
 func (d *directory) RemoveDirectory(ctx context.Context, name string) error {
 	// Remove the directory from the underlayer
-	if d.underlayer != nil {
-		if err := d.underlayer.RemoveDirectory(ctx, name); err != nil {
-			return err
-		}
+	if err := d.underlayer.RemoveDirectory(ctx, name); err != nil {
+		return err
 	}
 
 	// Remove the directory from the backend
 	err := d.backend.RemoveDirectory(ctx, name)
-	if err == nil {
-		return nil
-	} else if errors.Is(err, storage.ErrDirectoryNotFound) && d.underlayer != nil {
+	if err == nil || errors.Is(err, storage.ErrDirectoryNotFound) {
 		return nil
 	}
 
@@ -277,17 +232,13 @@ func (d *directory) RemoveDirectory(ctx context.Context, name string) error {
 // RemoveFile removes a child file of the directory.
 func (d *directory) RemoveFile(ctx context.Context, name string) error {
 	// Remove the directory from the underlayer
-	if d.underlayer != nil {
-		if err := d.underlayer.RemoveFile(ctx, name); err != nil {
-			return err
-		}
+	if err := d.underlayer.RemoveFile(ctx, name); err != nil {
+		return err
 	}
 
 	// Remove the directory from the backend
 	err := d.backend.RemoveFile(ctx, name)
-	if err == nil {
-		return nil
-	} else if errors.Is(err, storage.ErrFileNotFound) && d.underlayer != nil {
+	if err == nil || errors.Is(err, storage.ErrFileNotFound) {
 		return nil
 	}
 
@@ -303,24 +254,15 @@ func (d *directory) RenameFile(
 	noReplace bool,
 ) error {
 	// Rename the file on the underlayer
-	if d.underlayer != nil {
-		// Get new parent underlayer
-		newParentUnderlayer := newParent.(*directory).underlayer
-
-		// Rename the file on the underlayer
-		if err := d.underlayer.RenameFile(ctx, name, newParentUnderlayer, newName, noReplace); err != nil {
-			return err
-		}
+	newParentUnderlayer := newParent.(*directory).underlayer
+	if err := d.underlayer.RenameFile(ctx, name, newParentUnderlayer, newName, noReplace); err != nil {
+		return err
 	}
 
-	// Get new parent backend
-	newParentBackend := newParent.(*directory).backend
-
 	// Rename the file on the backend
+	newParentBackend := newParent.(*directory).backend
 	err := d.backend.RenameFile(ctx, name, newParentBackend, newName, noReplace)
-	if err == nil {
-		return nil
-	} else if errors.Is(err, storage.ErrFileNotFound) && d.underlayer != nil {
+	if err == nil || errors.Is(err, storage.ErrFileNotFound) {
 		return nil
 	}
 
@@ -336,24 +278,15 @@ func (d *directory) RenameDirectory(
 	noReplace bool,
 ) error {
 	// Rename the directory on the underlayer
-	if d.underlayer != nil {
-		// Get new parent underlayer
-		newParentUnderlayer := newParent.(*directory).underlayer
-
-		// Rename the directory on the underlayer
-		if err := d.underlayer.RenameDirectory(ctx, name, newParentUnderlayer, newName, noReplace); err != nil {
-			return err
-		}
+	newParentUnderlayer := newParent.(*directory).underlayer
+	if err := d.underlayer.RenameDirectory(ctx, name, newParentUnderlayer, newName, noReplace); err != nil {
+		return err
 	}
 
-	// Get new parent backend
-	newParentBackend := newParent.(*directory).backend
-
 	// Rename the directory on the backend
+	newParentBackend := newParent.(*directory).backend
 	err := d.backend.RenameDirectory(ctx, name, newParentBackend, newName, noReplace)
-	if err == nil {
-		return nil
-	} else if errors.Is(err, storage.ErrDirectoryNotFound) && d.underlayer != nil {
+	if err == nil || errors.Is(err, storage.ErrDirectoryNotFound) {
 		return nil
 	}
 

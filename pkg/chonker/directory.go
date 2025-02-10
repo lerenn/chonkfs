@@ -9,6 +9,7 @@ import (
 	"maps"
 	"slices"
 
+	"github.com/lerenn/chonkfs/pkg/info"
 	"github.com/lerenn/chonkfs/pkg/storage"
 )
 
@@ -150,7 +151,9 @@ func (dir *directory) CreateFile(ctx context.Context, name string, chunkSize int
 	}
 
 	// Create file on storage
-	sf, err := dir.storage.CreateFile(ctx, name, chunkSize)
+	sf, err := dir.storage.CreateFile(ctx, name, info.File{
+		ChunkSize: chunkSize,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrChonker, err)
 	}

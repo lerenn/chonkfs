@@ -26,7 +26,7 @@ func (d *Directory) GetInfo(_ context.Context) (info.Directory, error) {
 	return info.Directory{}, fmt.Errorf("not implemented")
 }
 
-func (d *Directory) CreateFile(_ context.Context, name string, chunkSize int) (storage.File, error) {
+func (d *Directory) CreateFile(_ context.Context, name string, info info.File) (storage.File, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 

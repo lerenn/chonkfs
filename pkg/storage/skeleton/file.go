@@ -9,7 +9,7 @@ import (
 
 type file struct{}
 
-func newFile() (*file, error) {
+func newFile(_ info.File) (*file, error) {
 	return &file{}, nil
 }
 

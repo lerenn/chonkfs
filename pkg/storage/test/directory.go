@@ -24,7 +24,9 @@ func (suite *DirectorySuite) TestCreateDirectory() {
 }
 
 func (suite *DirectorySuite) TestCreateDirectoryOnExistingFile() {
-	_, err := suite.Directory.CreateFile(context.Background(), "toto", 4096)
+	_, err := suite.Directory.CreateFile(context.Background(), "toto", info.File{
+		ChunkSize: 4096,
+	})
 	suite.Require().NoError(err)
 
 	_, err = suite.Directory.CreateDirectory(context.Background(), "toto")
@@ -45,7 +47,9 @@ func (suite *DirectorySuite) TestGetDirectoryWhenDoesNotExist() {
 }
 
 func (suite *DirectorySuite) TestGetDirectoryWhenIsFile() {
-	_, err := suite.Directory.CreateFile(context.Background(), "toto", 4096)
+	_, err := suite.Directory.CreateFile(context.Background(), "toto", info.File{
+		ChunkSize: 4096,
+	})
 	suite.Require().NoError(err)
 
 	_, err = suite.Directory.GetDirectory(context.Background(), "toto")
@@ -53,11 +57,17 @@ func (suite *DirectorySuite) TestGetDirectoryWhenIsFile() {
 }
 
 func (suite *DirectorySuite) TestListFiles() {
-	_, err := suite.Directory.CreateFile(context.Background(), "1", 4096)
+	_, err := suite.Directory.CreateFile(context.Background(), "1", info.File{
+		ChunkSize: 4096,
+	})
 	suite.Require().NoError(err)
-	_, err = suite.Directory.CreateFile(context.Background(), "2", 4096)
+	_, err = suite.Directory.CreateFile(context.Background(), "2", info.File{
+		ChunkSize: 4096,
+	})
 	suite.Require().NoError(err)
-	_, err = suite.Directory.CreateFile(context.Background(), "3", 4096)
+	_, err = suite.Directory.CreateFile(context.Background(), "3", info.File{
+		ChunkSize: 4096,
+	})
 	suite.Require().NoError(err)
 
 	_, err = suite.Directory.CreateDirectory(context.Background(), "dir")
@@ -105,7 +115,9 @@ func (suite *DirectorySuite) TestGetInfo() {
 
 func (suite *DirectorySuite) TestGetFile() {
 	// Create a file
-	_, err := suite.Directory.CreateFile(context.Background(), "File", 4096)
+	_, err := suite.Directory.CreateFile(context.Background(), "File", info.File{
+		ChunkSize: 4096,
+	})
 	suite.Require().NoError(err)
 
 	// Get the file
@@ -130,7 +142,9 @@ func (suite *DirectorySuite) TestListDirectories() {
 }
 
 func (suite *DirectorySuite) TestRemoveFile() {
-	_, err := suite.Directory.CreateFile(context.Background(), "dir", 4096)
+	_, err := suite.Directory.CreateFile(context.Background(), "dir", info.File{
+		ChunkSize: 4096,
+	})
 	suite.Require().NoError(err)
 
 	err = suite.Directory.RemoveFile(context.Background(), "dir")
@@ -146,7 +160,9 @@ func (suite *DirectorySuite) TestRemoveFileWhenDoesNotExist() {
 }
 
 func (suite *DirectorySuite) TestRenameFileOnSameDirectory() {
-	_, err := suite.Directory.CreateFile(context.Background(), "file", 4096)
+	_, err := suite.Directory.CreateFile(context.Background(), "file", info.File{
+		ChunkSize: 4096,
+	})
 	suite.Require().NoError(err)
 
 	err = suite.Directory.RenameFile(context.Background(), "file", suite.Directory, "newFile", true)
@@ -160,7 +176,9 @@ func (suite *DirectorySuite) TestRenameFileOnSameDirectory() {
 }
 
 func (suite *DirectorySuite) TestRenameFileOnDifferentDirectory() {
-	_, err := suite.Directory.CreateFile(context.Background(), "file", 4096)
+	_, err := suite.Directory.CreateFile(context.Background(), "file", info.File{
+		ChunkSize: 4096,
+	})
 	suite.Require().NoError(err)
 
 	dir, err := suite.Directory.CreateDirectory(context.Background(), "dir")
@@ -177,10 +195,14 @@ func (suite *DirectorySuite) TestRenameFileOnDifferentDirectory() {
 }
 
 func (suite *DirectorySuite) TestRenameFileOnExistingFileWithNoReplace() {
-	_, err := suite.Directory.CreateFile(context.Background(), "file", 4096)
+	_, err := suite.Directory.CreateFile(context.Background(), "file", info.File{
+		ChunkSize: 4096,
+	})
 	suite.Require().NoError(err)
 
-	_, err = suite.Directory.CreateFile(context.Background(), "newFile", 4096)
+	_, err = suite.Directory.CreateFile(context.Background(), "newFile", info.File{
+		ChunkSize: 4096,
+	})
 	suite.Require().NoError(err)
 
 	err = suite.Directory.RenameFile(context.Background(), "file", suite.Directory, "newFile", false)
@@ -188,10 +210,14 @@ func (suite *DirectorySuite) TestRenameFileOnExistingFileWithNoReplace() {
 }
 
 func (suite *DirectorySuite) TestRenameFileOnExistingFileWithReplace() {
-	_, err := suite.Directory.CreateFile(context.Background(), "file", 4096)
+	_, err := suite.Directory.CreateFile(context.Background(), "file", info.File{
+		ChunkSize: 4096,
+	})
 	suite.Require().NoError(err)
 
-	_, err = suite.Directory.CreateFile(context.Background(), "newFile", 8192)
+	_, err = suite.Directory.CreateFile(context.Background(), "newFile", info.File{
+		ChunkSize: 8192,
+	})
 	suite.Require().NoError(err)
 
 	err = suite.Directory.RenameFile(context.Background(), "file", suite.Directory, "newFile", true)

@@ -58,7 +58,7 @@ func (d *directory) GetInfo(_ context.Context) (info.Directory, error) {
 	return info.Directory{}, nil
 }
 
-func (d *directory) CreateFile(_ context.Context, name string, chunkSize int) (storage.File, error) {
+func (d *directory) CreateFile(_ context.Context, name string, info info.File) (storage.File, error) {
 	// Check if there is a file with this name
 	if _, ok := d.files[name]; ok {
 		return nil, fmt.Errorf("%w: %q", storage.ErrFileAlreadyExists, name)
@@ -70,7 +70,7 @@ func (d *directory) CreateFile(_ context.Context, name string, chunkSize int) (s
 	}
 
 	// Create the file
-	f, err := newFile(chunkSize)
+	f, err := newFile(info)
 	if err != nil {
 		return nil, err
 	}

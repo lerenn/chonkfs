@@ -11,27 +11,18 @@ import (
 
 var _ storage.File = (*file)(nil)
 
-type fileOptions struct {
-	Underlayer storage.File
-}
-
 type file struct {
 	chunkSize  int
 	backend    storage.File
 	underlayer storage.File
 }
 
-func newFile(backend storage.File, chunkSize int, opts *fileOptions) *file {
-	f := &file{
-		chunkSize: chunkSize,
-		backend:   backend,
+func newFile(backend storage.File, underlayer storage.File, info info.File) *file {
+	return &file{
+		chunkSize:  info.ChunkSize,
+		backend:    backend,
+		underlayer: underlayer,
 	}
-
-	if opts != nil {
-		f.underlayer = opts.Underlayer
-	}
-
-	return f
 }
 
 // GetInfo returns the file info.
@@ -40,10 +31,6 @@ func (f *file) GetInfo(ctx context.Context) (info.File, error) {
 		return fileInfo, nil
 	} else if !errors.Is(err, storage.ErrFileNotFound) {
 		return info.File{}, fmt.Errorf("%w: %w", storage.ErrStorage, err)
-	}
-
-	if f.underlayer == nil {
-		return info.File{}, storage.ErrFileNotFound
 	}
 
 	return f.underlayer.GetInfo(ctx)
@@ -61,16 +48,18 @@ func (f *file) WriteChunk(_ context.Context, _ int, _ []byte, _ int) (int, error
 
 // ResizeChunksNb resizes the number of chunks.
 func (f *file) ResizeChunksNb(ctx context.Context, size int) error {
-	if f.underlayer != nil {
-		if err := f.underlayer.ResizeChunksNb(ctx, size); err != nil {
-			return err
-		}
+	if err := f.underlayer.ResizeChunksNb(ctx, size); err != nil {
+		return err
 	}
 
 	return f.backend.ResizeChunksNb(ctx, size)
 }
 
 // ResizeLastChunk resizes the last chunk.
-func (f *file) ResizeLastChunk(_ context.Context, _ int) (changed int, err error) {
-	return 0, fmt.Errorf("not implemented")
+func (f *file) ResizeLastChunk(ctx context.Context, size int) (changed int, err error) {
+	if _, err := f.underlayer.ResizeLastChunk(ctx, size); err != nil {
+		return 0, err
+	}
+
+	return f.backend.ResizeLastChunk(ctx, size)
 }
