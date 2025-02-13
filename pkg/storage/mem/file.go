@@ -141,16 +141,11 @@ func (f *file) ResizeLastChunk(ctx context.Context, size int) (changed int, err 
 		return 0, fmt.Errorf("%w", storage.ErrChunkNotFound)
 	}
 
-	// Get last chunk size
-	lastChunkSize := 0
-	if len(f.chunks) > 0 {
-		lastChunkSize = lastChunk.Size
-	}
-
 	// Resize last chunk
-	if size > lastChunkSize {
+	oldSize := lastChunk.Size
+	if size > oldSize {
 		// Add data
-		lastChunk.Data = append(lastChunk.Data, make([]byte, size-lastChunkSize)...)
+		lastChunk.Data = append(lastChunk.Data, make([]byte, size-oldSize)...)
 	} else {
 		// Remove data
 		lastChunk.Data = lastChunk.Data[:size]
@@ -160,7 +155,7 @@ func (f *file) ResizeLastChunk(ctx context.Context, size int) (changed int, err 
 	lastChunk.Size = size
 	f.lastChunkSize = size
 
-	return size - lastChunkSize, nil
+	return size - oldSize, nil
 }
 
 func (f *file) ImportChunk(ctx context.Context, index int, data []byte) error {

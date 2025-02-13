@@ -8,6 +8,8 @@ import (
 	"github.com/lerenn/chonkfs/pkg/storage"
 )
 
+var _ storage.Directory = &Directory{}
+
 type Directory struct{}
 
 func NewDirectory() *Directory {

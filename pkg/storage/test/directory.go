@@ -165,7 +165,7 @@ func (suite *DirectorySuite) TestRenameFileOnSameDirectory() {
 	})
 	suite.Require().NoError(err)
 
-	err = suite.Directory.RenameFile(context.Background(), "file", suite.Directory, "newFile", true)
+	err = suite.Directory.RenameFile(context.Background(), "file", suite.Directory, "newFile", false)
 	suite.Require().NoError(err)
 
 	_, err = suite.Directory.GetFile(context.Background(), "file")
@@ -184,7 +184,7 @@ func (suite *DirectorySuite) TestRenameFileOnDifferentDirectory() {
 	dir, err := suite.Directory.CreateDirectory(context.Background(), "dir")
 	suite.Require().NoError(err)
 
-	err = suite.Directory.RenameFile(context.Background(), "file", dir, "newFile", true)
+	err = suite.Directory.RenameFile(context.Background(), "file", dir, "newFile", false)
 	suite.Require().NoError(err)
 
 	_, err = suite.Directory.GetFile(context.Background(), "file")
@@ -205,11 +205,11 @@ func (suite *DirectorySuite) TestRenameFileOnExistingFileWithNoReplace() {
 	})
 	suite.Require().NoError(err)
 
-	err = suite.Directory.RenameFile(context.Background(), "file", suite.Directory, "newFile", false)
+	err = suite.Directory.RenameFile(context.Background(), "file", suite.Directory, "newFile", true)
 	suite.Require().ErrorIs(err, storage.ErrFileAlreadyExists)
 }
 
-func (suite *DirectorySuite) TestRenameFileOnExistingFileWithReplace() {
+func (suite *DirectorySuite) TestRenameFileOnExistingFileWithoutNoReplace() {
 	_, err := suite.Directory.CreateFile(context.Background(), "file", info.File{
 		ChunkSize: 4096,
 	})
@@ -220,7 +220,7 @@ func (suite *DirectorySuite) TestRenameFileOnExistingFileWithReplace() {
 	})
 	suite.Require().NoError(err)
 
-	err = suite.Directory.RenameFile(context.Background(), "file", suite.Directory, "newFile", true)
+	err = suite.Directory.RenameFile(context.Background(), "file", suite.Directory, "newFile", false)
 	suite.Require().NoError(err)
 
 	_, err = suite.Directory.GetFile(context.Background(), "file")
@@ -272,18 +272,18 @@ func (suite *DirectorySuite) TestRenameDirectoryOnExistingDirectoryWithNoReplace
 	_, err = suite.Directory.CreateDirectory(context.Background(), "newDirectory")
 	suite.Require().NoError(err)
 
-	err = suite.Directory.RenameDirectory(context.Background(), "directory", suite.Directory, "newDirectory", false)
+	err = suite.Directory.RenameDirectory(context.Background(), "directory", suite.Directory, "newDirectory", true)
 	suite.Require().ErrorIs(err, storage.ErrDirectoryAlreadyExists)
 }
 
-func (suite *DirectorySuite) TestRenameDirectoryOnExistingDirectoryWithReplace() {
+func (suite *DirectorySuite) TestRenameDirectoryOnExistingDirectoryWithoutNoReplace() {
 	_, err := suite.Directory.CreateDirectory(context.Background(), "directory")
 	suite.Require().NoError(err)
 
 	_, err = suite.Directory.CreateDirectory(context.Background(), "newDirectory")
 	suite.Require().NoError(err)
 
-	err = suite.Directory.RenameDirectory(context.Background(), "directory", suite.Directory, "newDirectory", true)
+	err = suite.Directory.RenameDirectory(context.Background(), "directory", suite.Directory, "newDirectory", false)
 	suite.Require().NoError(err)
 
 	_, err = suite.Directory.GetDirectory(context.Background(), "directory")

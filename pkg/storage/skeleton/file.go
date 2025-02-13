@@ -5,12 +5,19 @@ import (
 	"fmt"
 
 	"github.com/lerenn/chonkfs/pkg/info"
+	"github.com/lerenn/chonkfs/pkg/storage"
 )
+
+var _ storage.File = &file{}
 
 type file struct{}
 
 func newFile(_ info.File) (*file, error) {
 	return &file{}, nil
+}
+
+func (f *file) ImportChunk(ctx context.Context, index int, data []byte) error {
+	return fmt.Errorf("not implemented")
 }
 
 func (f *file) GetInfo(_ context.Context) (info.File, error) {

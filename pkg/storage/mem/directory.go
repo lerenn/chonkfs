@@ -75,6 +75,7 @@ func (d *directory) CreateFile(_ context.Context, name string, info info.File) (
 		return nil, err
 	}
 
+	// Store the file
 	d.files[name] = f
 
 	return f, nil
@@ -146,13 +147,23 @@ func (d *directory) RenameFile(ctx context.Context, name string, newParent stora
 	// Check if there is a directory with the new name
 	_, directoryExists := newParent.(*directory).directories[newName]
 	if directoryExists {
-		return fmt.Errorf("%w: %q", storage.ErrDirectoryAlreadyExists, newName)
+		if noReplace {
+			return fmt.Errorf("%w: %q", storage.ErrDirectoryAlreadyExists, newName)
+		}
+
+		// Delete directory
+		delete(newParent.(*directory).directories, newName)
 	}
 
 	// Check if there is a file with the new name
 	_, fileExists := newParent.(*directory).files[newName]
-	if fileExists && !noReplace {
-		return fmt.Errorf("%w: %q", storage.ErrFileAlreadyExists, newName)
+	if fileExists {
+		if noReplace {
+			return fmt.Errorf("%w: %q", storage.ErrFileAlreadyExists, newName)
+		}
+
+		// Delete file
+		delete(newParent.(*directory).files, newName)
 	}
 
 	// Move the file
@@ -170,14 +181,24 @@ func (d *directory) RenameDirectory(ctx context.Context, name string, newParent 
 
 	// Check if there is a directory with the new name
 	_, directoryExists := newParent.(*directory).directories[newName]
-	if directoryExists && !noReplace {
-		return fmt.Errorf("%w: %q", storage.ErrDirectoryAlreadyExists, newName)
+	if directoryExists {
+		if noReplace {
+			return fmt.Errorf("%w: %q", storage.ErrDirectoryAlreadyExists, newName)
+		}
+
+		// Delete directory
+		delete(newParent.(*directory).directories, newName)
 	}
 
 	// Check if there is a file with the new name
 	_, fileExists := newParent.(*directory).files[newName]
 	if fileExists {
-		return fmt.Errorf("%w: %q", storage.ErrFileAlreadyExists, newName)
+		if noReplace {
+			return fmt.Errorf("%w: %q", storage.ErrFileAlreadyExists, newName)
+		}
+
+		// Delete file
+		delete(newParent.(*directory).files, newName)
 	}
 
 	// Move the directory
