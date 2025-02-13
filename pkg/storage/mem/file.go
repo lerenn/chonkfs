@@ -44,7 +44,7 @@ func (f *file) GetInfo(_ context.Context) (info.File, error) {
 	}, nil
 }
 
-func (f *file) checkReadWriteChunkParams(index int, data []byte, offset int) error {
+func (f *file) checkReadWriteChunkParams(index int, offset int) error {
 	// Check if chunk index is correct
 	if index < 0 || index >= len(f.chunks) {
 		return fmt.Errorf("%w: %d", storage.ErrInvalidChunkNb, index)
@@ -60,11 +60,6 @@ func (f *file) checkReadWriteChunkParams(index int, data []byte, offset int) err
 		return fmt.Errorf("%w: %d", storage.ErrInvalidOffset, offset)
 	}
 
-	// Check if the length of the data is not too big
-	if len(data) > f.chunkSize-offset {
-		return fmt.Errorf("%w: %d", storage.ErrRequestTooBig, len(data))
-	}
-
 	// Check if this is the last chunk, that the offset is correct$
 	if index == len(f.chunks)-1 && offset >= f.chunks[index].Size {
 		return fmt.Errorf("%w: %d", storage.ErrInvalidOffset, offset)
@@ -75,7 +70,7 @@ func (f *file) checkReadWriteChunkParams(index int, data []byte, offset int) err
 
 func (f *file) WriteChunk(ctx context.Context, index int, data []byte, offset int) (int, error) {
 	// Check params
-	if err := f.checkReadWriteChunkParams(index, data, offset); err != nil {
+	if err := f.checkReadWriteChunkParams(index, offset); err != nil {
 		return 0, err
 	}
 
@@ -85,7 +80,7 @@ func (f *file) WriteChunk(ctx context.Context, index int, data []byte, offset in
 
 func (f *file) ReadChunk(ctx context.Context, index int, data []byte, offset int) (int, error) {
 	// Check params
-	if err := f.checkReadWriteChunkParams(index, data, offset); err != nil {
+	if err := f.checkReadWriteChunkParams(index, offset); err != nil {
 		return 0, err
 	}
 
@@ -170,10 +165,8 @@ func (f *file) ImportChunk(ctx context.Context, index int, data []byte) error {
 	}
 
 	// Check if length of data is correct
-	if len(data) != f.chunkSize && index != len(f.chunks)-1 {
+	if (len(data) != f.chunkSize && index != len(f.chunks)-1) || len(data) > f.chunkSize {
 		return fmt.Errorf("%w: %d", storage.ErrInvalidChunkSize, len(data))
-	} else if len(data) > f.chunkSize {
-		return fmt.Errorf("%w: %d", storage.ErrRequestTooBig, len(data))
 	}
 
 	// Import data

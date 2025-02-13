@@ -201,3 +201,41 @@ func (suite *FileSuite) TestImportAlreadyExistingChunk() {
 	err = f.ImportChunk(context.Background(), 0, chunk)
 	suite.Require().ErrorIs(err, storage.ErrChunkAlreadyExists)
 }
+
+func (suite *FileSuite) TestImportTooBigChunk() {
+	// Create file
+	f, err := suite.Directory.CreateFile(context.Background(), "file", info.File{
+		ChunkSize:   4096,
+		ChunksCount: 1,
+	})
+	suite.Require().NoError(err)
+
+	// Import chunk
+	chunk := make([]byte, 4097)
+	err = f.ImportChunk(context.Background(), 0, chunk)
+	suite.Require().ErrorIs(err, storage.ErrInvalidChunkSize)
+}
+
+func (suite *FileSuite) TestReadChunkWithBiggerBufferThanChunk() {
+	// Create file
+	f, err := suite.Directory.CreateFile(context.Background(), "file", info.File{
+		ChunkSize: 4096,
+	})
+	suite.Require().NoError(err)
+
+	// Resize to have at least one chunk
+	err = f.ResizeChunksNb(context.Background(), 1)
+	suite.Require().NoError(err)
+
+	// Write chunk
+	buf := []byte("Hello, World!")
+	n, err := f.WriteChunk(context.Background(), 0, buf, 0)
+	suite.Require().NoError(err)
+	suite.Require().Equal(len(buf), n)
+
+	// Read chunk
+	rbuf := make([]byte, 8192)
+	_, err = f.ReadChunk(context.Background(), 0, rbuf, 0)
+	suite.Require().NoError(err)
+	suite.Require().Equal(buf, rbuf[:len(buf)])
+}

@@ -21,8 +21,6 @@ var (
 	ErrInvalidChunkNb = fmt.Errorf("%w: invalid chunk number", ErrStorage)
 	// ErrInvalidOffset happens when the offset is invalid.
 	ErrInvalidOffset = fmt.Errorf("%w: invalid offset", ErrStorage)
-	// ErrRequestTooBig happens when the request is too big.
-	ErrRequestTooBig = fmt.Errorf("%w: request too big", ErrStorage)
 	// ErrInvalidChunkSize happens when the chunk size is invalid.
 	ErrInvalidChunkSize = fmt.Errorf("%w: invalid chunk size", ErrStorage)
 	// ErrNoChunk happens when there is no chunk in the file.

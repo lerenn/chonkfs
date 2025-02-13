@@ -92,10 +92,8 @@ func (f *file) ImportChunk(ctx context.Context, index int, data []byte) error {
 	}
 
 	// Check if length of data is correct
-	if len(data) != info.ChunkSize && index != info.ChunksCount-1 {
+	if (len(data) != info.ChunkSize && index != info.ChunksCount-1) || len(data) > info.ChunkSize {
 		return fmt.Errorf("%w: %d", storage.ErrInvalidChunkSize, len(data))
-	} else if len(data) > info.ChunkSize {
-		return fmt.Errorf("%w: %d", storage.ErrRequestTooBig, len(data))
 	}
 
 	// Import data
@@ -122,13 +120,7 @@ func (f *file) saveInfo(info info.File) error {
 	return writeMetadata(f.path, info)
 }
 
-func (f *file) checkReadWriteChunkParams(index int, data []byte, offset int) error {
-	// Get info
-	info, err := f.GetInfo(context.Background())
-	if err != nil {
-		return err
-	}
-
+func (f *file) checkReadWriteChunkParams(info info.File, index int, offset int) error {
 	// Check if chunk index is correct
 	if index < 0 || index >= info.ChunksCount {
 		return fmt.Errorf("%w: %d", storage.ErrInvalidChunkNb, index)
@@ -148,11 +140,6 @@ func (f *file) checkReadWriteChunkParams(index int, data []byte, offset int) err
 		return fmt.Errorf("%w: %d", storage.ErrInvalidOffset, offset)
 	}
 
-	// Check if the length of the data is not too big
-	if len(data) > info.ChunkSize-offset {
-		return fmt.Errorf("%w: %d", storage.ErrRequestTooBig, len(data))
-	}
-
 	// Check if this is the last chunk, that the offset is correct$
 	if index == info.ChunksCount-1 && offset >= info.LastChunkSize {
 		return fmt.Errorf("%w: %d", storage.ErrInvalidOffset, offset)
@@ -162,8 +149,14 @@ func (f *file) checkReadWriteChunkParams(index int, data []byte, offset int) err
 }
 
 func (f *file) WriteChunk(ctx context.Context, index int, data []byte, offset int) (int, error) {
+	// Get info
+	info, err := f.GetInfo(context.Background())
+	if err != nil {
+		return 0, err
+	}
+
 	// Check params
-	if err := f.checkReadWriteChunkParams(index, data, offset); err != nil {
+	if err := f.checkReadWriteChunkParams(info, index, offset); err != nil {
 		return 0, err
 	}
 
@@ -172,6 +165,11 @@ func (f *file) WriteChunk(ctx context.Context, index int, data []byte, offset in
 	file, err := os.OpenFile(chunkPath, os.O_WRONLY, 0644)
 	if err != nil {
 		return 0, err
+	}
+
+	// Limit data to write if it is too long
+	if len(data) > info.ChunkSize-offset {
+		data = data[:info.ChunkSize-offset]
 	}
 
 	// Write data
@@ -185,8 +183,14 @@ func (f *file) WriteChunk(ctx context.Context, index int, data []byte, offset in
 }
 
 func (f *file) ReadChunk(ctx context.Context, index int, data []byte, offset int) (int, error) {
+	// Get info
+	info, err := f.GetInfo(context.Background())
+	if err != nil {
+		return 0, err
+	}
+
 	// Check params
-	if err := f.checkReadWriteChunkParams(index, data, offset); err != nil {
+	if err := f.checkReadWriteChunkParams(info, index, offset); err != nil {
 		return 0, err
 	}
 
