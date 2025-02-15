@@ -21,7 +21,7 @@ type DirectoryWithMemSuite struct {
 func (suite *DirectoryWithMemSuite) SetupTest() {
 	suite.Upperlayer = mem.NewDirectory()
 	suite.Underlayer = mem.NewDirectory()
-	suite.Directory = NewDirectory(suite.Upperlayer, suite.Underlayer)
+	suite.Directory, _ = NewDirectory(suite.Upperlayer, suite.Underlayer)
 }
 
 type DirectoryWithDiskSuite struct {
@@ -41,7 +41,7 @@ func (suite *DirectoryWithDiskSuite) SetupTest() {
 
 	suite.Upperlayer = disk.NewDirectory(suite.UpperlayerPath)
 	suite.Underlayer = disk.NewDirectory(suite.UnderlayerPath)
-	suite.Directory = NewDirectory(suite.Upperlayer, suite.Underlayer)
+	suite.Directory, _ = NewDirectory(suite.Upperlayer, suite.Underlayer)
 }
 
 func (suite *DirectoryWithDiskSuite) TearDownTest() {

@@ -50,6 +50,7 @@ func ToSyscallErrno(err error, opts ToSyscallErrnoOptions) syscall.Errno {
 	case errors.Is(err, ErrNoEntry):
 		return syscall.ENOENT
 	default:
+		fmt.Println("2")
 		return syscall.EIO
 	}
 }

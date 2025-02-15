@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"time"
@@ -9,13 +10,13 @@ import (
 	"github.com/hanwen/go-fuse/v2/fs"
 	"github.com/lerenn/chonkfs/pkg/chonker"
 	"github.com/lerenn/chonkfs/pkg/fuse"
-	"github.com/lerenn/chonkfs/pkg/storage/layer"
 	"github.com/lerenn/chonkfs/pkg/storage/mem"
 	"github.com/spf13/cobra"
 )
 
 var (
-	path      string
+	diskPath  string
+	mntPath   string
 	debug     bool
 	chunkSize int
 )
@@ -27,8 +28,8 @@ var rootCmd = &cobra.Command{
 	Args:    cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		// Check if path is set
-		if path == "" {
-			return fmt.Errorf("path is required")
+		if mntPath == "" {
+			return fmt.Errorf("mount path is required")
 		}
 
 		// Create a default logger if logging is activated
@@ -36,14 +37,18 @@ var rootCmd = &cobra.Command{
 		if debug {
 			logger = log.Default()
 		} else {
-			logger = log.New(os.Stdout, "", 0)
+			logger = log.New(io.Discard, "", 0)
 		}
 
+		// Create backend
+		//  l, err := layer.NewDirectory(mem.NewDirectory(), disk.NewDirectory(diskPath))
+		// if err != nil {
+		// 	return err
+		// }
+		l := mem.NewDirectory()
+
 		// Create chonker
-		c, err := chonker.NewDirectory(
-			cmd.Context(),
-			layer.NewDirectory(mem.NewDirectory(), nil),
-			chonker.WithDirectoryLogger(logger))
+		c, err := chonker.NewDirectory(cmd.Context(), l, chonker.WithDirectoryLogger(logger))
 		if err != nil {
 			return err
 		}
@@ -55,7 +60,7 @@ var rootCmd = &cobra.Command{
 
 		// Create FUSE server
 		to := time.Duration(1)
-		server, err := fs.Mount(path, w, &fs.Options{
+		server, err := fs.Mount(mntPath, w, &fs.Options{
 			Logger:       logger,
 			UID:          uint32(os.Getuid()),
 			GID:          uint32(os.Getgid()),
@@ -76,8 +81,9 @@ func main() {
 	var errCode int
 
 	// Set flags
-	rootCmd.PersistentFlags().StringVarP(&path, "path", "p", "", "Set mount path")
-	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "Enable debug mode")
+	rootCmd.PersistentFlags().StringVarP(&mntPath, "mnt", "m", "", "Set mount path")
+	rootCmd.PersistentFlags().StringVarP(&diskPath, "disk", "d", "", "Set disk path")
+	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "D", false, "Enable debug mode")
 	rootCmd.PersistentFlags().IntVarP(&chunkSize, "chunk-size", "s", fuse.DefaultChunkSize, "Set chunk size")
 
 	// Execute command

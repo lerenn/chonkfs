@@ -18,5 +18,5 @@ type FileWithMemSuite struct {
 func (suite *FileWithMemSuite) SetupTest() {
 	suite.Upperlayer = mem.NewDirectory()
 	suite.Underlayer = mem.NewDirectory()
-	suite.Directory = NewDirectory(suite.Upperlayer, suite.Underlayer)
+	suite.Directory, _ = NewDirectory(suite.Upperlayer, suite.Underlayer)
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/hanwen/go-fuse/v2/fs"
 	"github.com/hanwen/go-fuse/v2/fuse"
 	"github.com/lerenn/chonkfs/pkg/chonker"
-	"golang.org/x/sys/unix"
 )
 
 type directoryOption func(dir *Directory)
@@ -83,6 +82,12 @@ func NewDirectory(backend chonker.Directory, options ...directoryOption) *Direct
 	return dir
 }
 
+// PreHook is a hook that is called before the directory is used.
+func (d *Directory) PreHook() {}
+
+// PostHook is a hook that is called after the directory is used.
+func (d *Directory) PostHook() {}
+
 // Create creates a child node of the directory for the FUSE system.
 func (d *Directory) Create(
 	ctx context.Context,
@@ -91,6 +96,8 @@ func (d *Directory) Create(
 	_ uint32,
 	_ *fuse.EntryOut,
 ) (node *fs.Inode, fh fs.FileHandle, fuseFlags uint32, errno syscall.Errno) {
+	d.PreHook()
+	defer d.PostHook()
 	d.logger.Printf("Directory.Create(name=%q, ...)\n", name)
 
 	// Create a new child file from backend
@@ -113,6 +120,8 @@ func (d *Directory) Create(
 
 // Getattr returns the attributes of the directory for the FUSE system.
 func (d *Directory) Getattr(_ context.Context, _ fs.FileHandle, out *fuse.AttrOut) syscall.Errno {
+	d.PreHook()
+	defer d.PostHook()
 	d.logger.Printf("Directory.Getattr(...)\n")
 
 	out.Mode = dirMode
@@ -129,6 +138,8 @@ func (d *Directory) Statx(
 	_ uint32,
 	out *fuse.StatxOut,
 ) syscall.Errno {
+	d.PreHook()
+	defer d.PostHook()
 	d.logger.Printf("Directory.Statx(...)\n")
 
 	out.Mode = dirMode
@@ -139,6 +150,8 @@ func (d *Directory) Statx(
 
 // Lookup returns the child directory of the directory for the FUSE system.
 func (d *Directory) Lookup(ctx context.Context, name string, out *fuse.EntryOut) (*fs.Inode, syscall.Errno) {
+	d.PreHook()
+	defer d.PostHook()
 	d.logger.Printf("Directory.Lookup(name=%q, ...)\n", name)
 
 	// Get backend child directory
@@ -233,6 +246,8 @@ func (d *Directory) Mkdir(
 	_ uint32,
 	_ *fuse.EntryOut,
 ) (*fs.Inode, syscall.Errno) {
+	d.PreHook()
+	defer d.PostHook()
 	d.logger.Printf("Directory.Mkdir(...)\n")
 
 	// Create a new child directory from backend
@@ -251,6 +266,8 @@ func (d *Directory) Mkdir(
 
 // Readdir returns the children of the directory for the FUSE system.
 func (d *Directory) Readdir(ctx context.Context) (fs.DirStream, syscall.Errno) {
+	d.PreHook()
+	defer d.PostHook()
 	d.logger.Printf("Directory.Readdir(...)\n")
 
 	list := make([]fuse.DirEntry, 0)
@@ -292,6 +309,8 @@ func (d *Directory) Readdir(ctx context.Context) (fs.DirStream, syscall.Errno) {
 
 // Rmdir removes a child directory of the directory for the FUSE system.
 func (d *Directory) Rmdir(ctx context.Context, name string) syscall.Errno {
+	d.PreHook()
+	defer d.PostHook()
 	d.logger.Printf("Directory.Rmdir(...)\n")
 	return chonker.ToSyscallErrno(
 		d.backend.RemoveDirectory(ctx, name),
@@ -303,6 +322,8 @@ func (d *Directory) Rmdir(ctx context.Context, name string) syscall.Errno {
 
 // Unlink removes a child directory of the directory for the FUSE system.
 func (d *Directory) Unlink(ctx context.Context, name string) syscall.Errno {
+	d.PreHook()
+	defer d.PostHook()
 	d.logger.Printf("Directory.Unlink(name=%q, ...)\n", name)
 	return chonker.ToSyscallErrno(
 		d.backend.RemoveFile(ctx, name),
@@ -314,6 +335,8 @@ func (d *Directory) Unlink(ctx context.Context, name string) syscall.Errno {
 
 // Setattr sets the attributes of the directory for the FUSE system.
 func (d *Directory) Setattr(_ context.Context, _ fs.FileHandle, _ *fuse.SetAttrIn, _ *fuse.AttrOut) syscall.Errno {
+	d.PreHook()
+	defer d.PostHook()
 	d.logger.Printf("Directory.Setattr(...)\n")
 	return fs.OK
 }
@@ -326,6 +349,8 @@ func (d *Directory) Rename(
 	newName string,
 	flags uint32,
 ) syscall.Errno {
+	d.PreHook()
+	defer d.PostHook()
 	d.logger.Printf("Directory.Rename(name=%q, newName=%q)\n", name, newName)
 
 	// Get the new parent directory
@@ -335,7 +360,8 @@ func (d *Directory) Rename(
 	}
 
 	// Check if no replace flag is set
-	noReplace := (flags & unix.RENAME_SECLUDE) == unix.RENAME_SECLUDE
+	// TODO: implement the noReplace detection
+	noReplace := false
 
 	// Check if the directory or file exists
 	_, err := d.backend.GetDirectory(ctx, name)

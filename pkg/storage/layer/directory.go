@@ -15,11 +15,19 @@ type directory struct {
 	underlayer storage.Directory
 }
 
-func NewDirectory(upperlayer storage.Directory, underlayer storage.Directory) *directory {
+func NewDirectory(upperlayer storage.Directory, underlayer storage.Directory) (*directory, error) {
+	if upperlayer == nil {
+		return nil, errors.New("upperlayer is required")
+	}
+
+	if underlayer == nil {
+		return nil, errors.New("underlayer is required")
+	}
+
 	return &directory{
 		upperlayer: upperlayer,
 		underlayer: underlayer,
-	}
+	}, nil
 }
 
 // CreateDirectory creates a directory.
@@ -39,7 +47,7 @@ func (d *directory) CreateDirectory(ctx context.Context, name string) (storage.D
 	}
 
 	// Return the new directory
-	return NewDirectory(upperlayerChild, underlayerChild), nil
+	return NewDirectory(upperlayerChild, underlayerChild)
 }
 
 // GetInfo returns the directory info.
@@ -107,7 +115,7 @@ func (d *directory) GetDirectory(ctx context.Context, name string) (storage.Dire
 	}
 
 	// Return the directory
-	return NewDirectory(upperlayer, underlayer), nil
+	return NewDirectory(upperlayer, underlayer)
 }
 
 // GetFile returns a child file.

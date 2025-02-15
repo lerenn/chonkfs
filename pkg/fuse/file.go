@@ -73,6 +73,12 @@ type File struct {
 	chunkSize int
 }
 
+// PreHook is a hook that is called before the file is used.
+func (f *File) PreHook() {}
+
+// PostHook is a hook that is called after the file is used.
+func (f *File) PostHook() {}
+
 // NewFile creates a new file.
 func NewFile(backend chonker.File, options ...fileOption) *File {
 	// Create default file
@@ -94,6 +100,8 @@ func NewFile(backend chonker.File, options ...fileOption) *File {
 
 // Getattr returns the attributes of the file to the FUSE system.
 func (fl *File) Getattr(ctx context.Context, out *fuse.AttrOut) (errno syscall.Errno) {
+	fl.PreHook()
+	defer fl.PostHook()
 	fl.logger.Printf("File[%s].Getattr(...)\n", fl.name)
 
 	// Get attributes from backend
@@ -116,6 +124,8 @@ func (fl *File) Getattr(ctx context.Context, out *fuse.AttrOut) (errno syscall.E
 
 // Statx returns the attributes of the file to the FUSE system.
 func (fl *File) Statx(ctx context.Context, _ uint32, _ uint32, out *fuse.StatxOut) syscall.Errno {
+	fl.PreHook()
+	defer fl.PostHook()
 	fl.logger.Printf("File[%s].Statx(...)\n", fl.name)
 
 	// Get attributes from backend
@@ -138,6 +148,8 @@ func (fl *File) Statx(ctx context.Context, _ uint32, _ uint32, out *fuse.StatxOu
 
 // Read reads the file for the FUSE system.
 func (fl *File) Read(ctx context.Context, dest []byte, off int64) (fuse.ReadResult, syscall.Errno) {
+	fl.PreHook()
+	defer fl.PostHook()
 	fl.logger.Printf("File[%s].Read(len=%d, off=%d)\n", fl.name, len(dest), off)
 
 	// Get content from file
@@ -154,6 +166,8 @@ func (fl *File) Read(ctx context.Context, dest []byte, off int64) (fuse.ReadResu
 
 // Open opens the file for the FUSE system.
 func (fl *File) Open(_ context.Context, flags uint32) (fh fs.FileHandle, fuseFlags uint32, errno syscall.Errno) {
+	fl.PreHook()
+	defer fl.PostHook()
 	fl.logger.Printf("File[%s].Open(...)\n", fl.name)
 
 	// Save flags
@@ -167,6 +181,8 @@ func (fl *File) Open(_ context.Context, flags uint32) (fh fs.FileHandle, fuseFla
 
 // Write writes the file for the FUSE system.
 func (fl *File) Write(ctx context.Context, data []byte, off int64) (written uint32, errno syscall.Errno) {
+	fl.PreHook()
+	defer fl.PostHook()
 	fl.logger.Printf("File[%s].Write(len=%d, off=%d)\n", fl.name, len(data), off)
 
 	// Write content to file
@@ -182,6 +198,8 @@ func (fl *File) Write(ctx context.Context, data []byte, off int64) (written uint
 
 // Fsync flushes the file for the FUSE system.
 func (fl *File) Fsync(ctx context.Context, _ uint32) syscall.Errno {
+	fl.PreHook()
+	defer fl.PostHook()
 	fl.logger.Printf("File[%s].Fsync(...)\n", fl.name)
 
 	// Sync cache on backend with underlying support
@@ -194,6 +212,8 @@ func (fl *File) Fsync(ctx context.Context, _ uint32) syscall.Errno {
 
 // Setattr sets the attributes of the file for the FUSE system.
 func (fl *File) Setattr(ctx context.Context, _ fs.FileHandle, in *fuse.SetAttrIn, out *fuse.AttrOut) syscall.Errno {
+	fl.PreHook()
+	defer fl.PostHook()
 	fl.logger.Printf("File[%s].Setattr(in=%+v, out=%+v)\n", fl.name, *in, *out)
 
 	// Get actual size
@@ -225,6 +245,8 @@ func (fl *File) Setattr(ctx context.Context, _ fs.FileHandle, in *fuse.SetAttrIn
 
 // Flush flushes the file for the FUSE system.
 func (fl *File) Flush(ctx context.Context) syscall.Errno {
+	fl.PreHook()
+	defer fl.PostHook()
 	fl.logger.Printf("File[%s].Flush(...)\n", fl.name)
 
 	// Sync cache on backend with underlying support
