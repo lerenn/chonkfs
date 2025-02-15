@@ -36,10 +36,16 @@ func newFile(info info.File) (*file, error) {
 }
 
 func (f *file) GetInfo(_ context.Context) (info.File, error) {
+	size := 0
+	chunksCount := len(f.chunks)
+	if chunksCount > 0 {
+		size = (chunksCount-1)*f.chunkSize + f.lastChunkSize
+	}
+
 	return info.File{
-		Size:          (len(f.chunks)-1)*f.chunkSize + f.lastChunkSize,
+		Size:          size,
 		ChunkSize:     f.chunkSize,
-		ChunksCount:   len(f.chunks),
+		ChunksCount:   chunksCount,
 		LastChunkSize: f.lastChunkSize,
 	}, nil
 }

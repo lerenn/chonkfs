@@ -229,3 +229,30 @@ func (suite *Suite) TestCreateWriteCloseThenOpenReadClose() {
 	err = srv.Unmount()
 	suite.Require().NoError(err)
 }
+
+func (suite *Suite) TestCreateAnEmptyFileAndReopenIt() {
+	// Mount chunkfs
+	c, err := chonker.NewDirectory(context.Background(), mem.NewDirectory())
+	suite.Require().NoError(err)
+	path, srv := suite.createChonkFS(c, 4096)
+
+	// Create file
+	f, err := os.OpenFile(path+"/hello.txt", os.O_RDWR|os.O_CREATE, 0755)
+	suite.Require().NoError(err)
+
+	// Close file
+	err = f.Close()
+	suite.Require().NoError(err)
+
+	// Open file
+	f, err = os.OpenFile(path+"/hello.txt", os.O_RDWR, 0755)
+	suite.Require().NoError(err)
+
+	// Close file
+	err = f.Close()
+	suite.Require().NoError(err)
+
+	// Unmount chunkfs
+	err = srv.Unmount()
+	suite.Require().NoError(err)
+}

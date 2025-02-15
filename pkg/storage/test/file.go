@@ -68,11 +68,15 @@ func (suite *FileSuite) TestGetInfoFromEmptyFile() {
 	})
 	suite.Require().NoError(err)
 
-	info, err := f.GetInfo(context.Background())
+	fInfo, err := f.GetInfo(context.Background())
 	suite.Require().NoError(err)
 
-	suite.Require().Equal(0, info.ChunksCount)
-	suite.Require().Equal(4096, info.ChunkSize)
+	suite.Require().Equal(info.File{
+		Size:          0,
+		ChunkSize:     4096,
+		ChunksCount:   0,
+		LastChunkSize: 0,
+	}, fInfo)
 }
 
 func (suite *FileSuite) TestResizeChunksNb() {
