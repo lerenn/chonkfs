@@ -289,3 +289,11 @@ func (suite *DirectorySuite) TestRenameDirectoryOnExistingDirectoryWithoutNoRepl
 	_, err = suite.Directory.GetDirectory(context.Background(), "directory")
 	suite.Require().ErrorIs(err, storage.ErrDirectoryNotFound)
 }
+
+func (suite *DirectorySuite) TestGetFileWhenIsDirectory() {
+	_, err := suite.Directory.CreateDirectory(context.Background(), "dir")
+	suite.Require().NoError(err)
+
+	_, err = suite.Directory.GetFile(context.Background(), "dir")
+	suite.Require().ErrorIs(err, storage.ErrIsDirectory)
+}

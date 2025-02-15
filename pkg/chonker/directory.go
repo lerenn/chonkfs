@@ -105,7 +105,7 @@ func (dir *directory) CreateDirectory(ctx context.Context, name string) (Directo
 func (dir *directory) GetDirectory(ctx context.Context, name string) (Directory, error) {
 	// Check if this is not already a file
 	_, err := dir.storage.GetFile(ctx, name)
-	if err != nil && !errors.Is(err, storage.ErrFileNotFound) {
+	if err != nil && !errors.Is(err, storage.ErrFileNotFound) && !errors.Is(err, storage.ErrIsDirectory) {
 		return nil, fmt.Errorf("%w: %w", ErrChonker, err)
 	} else if err == nil {
 		return nil, ErrNotDirectory
