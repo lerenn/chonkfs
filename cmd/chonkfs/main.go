@@ -10,6 +10,7 @@ import (
 	"github.com/hanwen/go-fuse/v2/fs"
 	"github.com/lerenn/chonkfs/pkg/chonker"
 	"github.com/lerenn/chonkfs/pkg/fuse"
+	"github.com/lerenn/chonkfs/pkg/storage"
 	"github.com/lerenn/chonkfs/pkg/storage/disk"
 	"github.com/lerenn/chonkfs/pkg/storage/layer"
 	"github.com/lerenn/chonkfs/pkg/storage/mem"
@@ -43,13 +44,20 @@ var rootCmd = &cobra.Command{
 		}
 
 		// Create backend
-		l, err := layer.NewDirectory(mem.NewDirectory(), disk.NewDirectory(diskPath))
-		if err != nil {
-			return err
+		var err error
+		var be storage.Directory
+		switch {
+		case diskPath != "":
+			be, err = layer.NewDirectory(mem.NewDirectory(), disk.NewDirectory(diskPath))
+			if err != nil {
+				return err
+			}
+		default:
+			be = mem.NewDirectory()
 		}
 
 		// Create chonker
-		c, err := chonker.NewDirectory(cmd.Context(), l, chonker.WithDirectoryLogger(logger))
+		c, err := chonker.NewDirectory(cmd.Context(), be, chonker.WithDirectoryLogger(logger))
 		if err != nil {
 			return err
 		}
