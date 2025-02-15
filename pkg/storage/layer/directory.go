@@ -114,6 +114,14 @@ func (d *directory) GetDirectory(ctx context.Context, name string) (storage.Dire
 		}
 	}
 
+	// If the directory is not found on the upperlayer, create it
+	if upperlayer == nil {
+		upperlayer, err = d.upperlayer.CreateDirectory(ctx, name)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// Return the directory
 	return NewDirectory(upperlayer, underlayer)
 }
