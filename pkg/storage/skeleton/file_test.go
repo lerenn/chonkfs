@@ -1,4 +1,4 @@
-package mem
+package skeleton
 
 import (
 	"testing"
@@ -8,6 +8,7 @@ import (
 )
 
 func TestFileSuite(t *testing.T) {
+	t.Skip("skipping test as it is a skeleton")
 	suite.Run(t, new(FileSuite))
 }
 

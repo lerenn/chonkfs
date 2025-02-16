@@ -2,255 +2,231 @@ package mem
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"maps"
 
+	"github.com/lerenn/chonkfs/pkg/info"
 	"github.com/lerenn/chonkfs/pkg/storage"
 )
 
-var _ storage.Directory = (*Directory)(nil)
-
-// DirectoryOptions represents the options that can be given to a Directory.
-type DirectoryOptions struct {
-	Underlayer storage.Directory
-}
-
-// Directory is a directory in memory.
-type Directory struct {
-	directories map[string]*Directory
-	files       map[string]*file
-	opts        *DirectoryOptions
+type directory struct {
+	directories map[string]storage.Directory
+	files       map[string]storage.File
 }
 
 // NewDirectory creates a new directory.
-func NewDirectory(opts *DirectoryOptions) *Directory {
-	return &Directory{
-		directories: make(map[string]*Directory),
-		files:       make(map[string]*file),
-		opts:        opts,
+func NewDirectory() storage.Directory {
+	return &directory{
+		directories: make(map[string]storage.Directory),
+		files:       make(map[string]storage.File),
 	}
-}
-
-// Underlayer returns the directory underlayer.
-func (d *Directory) Underlayer() storage.Directory {
-	if d.opts == nil {
-		return nil
-	}
-
-	return d.opts.Underlayer
 }
 
 // CreateDirectory creates a directory.
-func (d *Directory) CreateDirectory(ctx context.Context, name string) (storage.Directory, error) {
-	var childUnderlayer storage.Directory
-	var err error
-
-	// Check if the directory already exists
-	if u := d.Underlayer(); u != nil {
-		// If there is an underlayer, then creates it here: it will check if
-		// the directory already exists
-		childUnderlayer, err = u.CreateDirectory(ctx, name)
-		if err != nil {
-			return nil, err
-		}
-	} else if _, exist := d.directories[name]; exist {
-		// If already exists, then return an error
-		return nil, storage.ErrDirectoryAlreadyExists
+func (d *directory) CreateDirectory(_ context.Context, name string) (storage.Directory, error) {
+	// Check if there is a file with this name
+	if _, ok := d.files[name]; ok {
+		return nil, fmt.Errorf("%w: %q", storage.ErrFileAlreadyExists, name)
 	}
 
-	// Create the new directory with its underlayer
-	nd := NewDirectory(&DirectoryOptions{
-		Underlayer: childUnderlayer,
-	})
+	// Check if a directory with this name already exists
+	if _, ok := d.directories[name]; ok {
+		return nil, fmt.Errorf("%w: %q", storage.ErrDirectoryAlreadyExists, name)
+	}
+
+	// Create directory and store it
+	nd := NewDirectory()
 	d.directories[name] = nd
 
 	return nd, nil
 }
 
-// Info returns the directory info.
-func (d *Directory) Info(_ context.Context) (storage.DirectoryInfo, error) {
-	return storage.DirectoryInfo{}, nil
+// GetDirectory returns a directory.
+func (d *directory) GetDirectory(_ context.Context, name string) (storage.Directory, error) {
+	// Check if there is a file with this name
+	if _, ok := d.files[name]; ok {
+		return nil, fmt.Errorf("%w: %q", storage.ErrIsFile, name)
+	}
+
+	// Check if there is a directory with this name
+	nd, ok := d.directories[name]
+	if !ok {
+		return nil, fmt.Errorf("%w: %q", storage.ErrDirectoryNotFound, name)
+	}
+
+	return nd, nil
+}
+
+// GetInfo returns the directory info.
+func (d *directory) GetInfo(_ context.Context) (info.Directory, error) {
+	return info.Directory{}, nil
+}
+
+// CreateFile creates a file.
+func (d *directory) CreateFile(_ context.Context, name string, info info.File) (storage.File, error) {
+	// Check if there is a file with this name
+	if _, ok := d.files[name]; ok {
+		return nil, fmt.Errorf("%w: %q", storage.ErrFileAlreadyExists, name)
+	}
+
+	// Check if there is a directory with this name
+	if _, ok := d.directories[name]; ok {
+		return nil, fmt.Errorf("%w: %q", storage.ErrDirectoryAlreadyExists, name)
+	}
+
+	// Create the file
+	f, err := newFile(info)
+	if err != nil {
+		return nil, err
+	}
+
+	// Store the file
+	d.files[name] = f
+
+	return f, nil
+}
+
+// GetFile returns a file.
+func (d *directory) GetFile(_ context.Context, name string) (storage.File, error) {
+	// Check if there is a directory with this name
+	if _, ok := d.directories[name]; ok {
+		return nil, fmt.Errorf("%w: %q", storage.ErrIsDirectory, name)
+	}
+
+	// Check if there is a file with this name
+	f, ok := d.files[name]
+	if !ok {
+		return nil, fmt.Errorf("%w: %q", storage.ErrFileNotFound, name)
+	}
+
+	return f, nil
 }
 
 // ListFiles returns a map of files.
-func (d *Directory) ListFiles(_ context.Context) (map[string]storage.File, error) {
-	m := make(map[string]storage.File, len(d.files))
-	for p, f := range d.files {
-		m[p] = f
-	}
-	return m, nil
+func (d *directory) ListFiles(_ context.Context) (map[string]storage.File, error) {
+	return maps.Clone(d.files), nil
 }
 
-// GetDirectory returns a child directory.
-func (d *Directory) GetDirectory(_ context.Context, name string) (storage.Directory, error) {
-	dir, ok := d.directories[name]
-	if !ok {
-		return nil, storage.ErrDirectoryNotExists
-	}
-	return dir, nil
-}
-
-// GetFile returns a child file.
-func (d *Directory) GetFile(_ context.Context, name string) (storage.File, error) {
-	f, ok := d.files[name]
-	if !ok {
-		return nil, storage.ErrFileNotExists
-	}
-	return f, nil
-}
-
-// ListDirectories returns a map of directories.
-func (d *Directory) ListDirectories(_ context.Context) (map[string]storage.Directory, error) {
-	m := make(map[string]storage.Directory, len(d.directories))
-	for p, dir := range d.directories {
-		m[p] = dir
-	}
-	return m, nil
-}
-
-// CreateFile creates a file in the directory.
-func (d *Directory) CreateFile(ctx context.Context, name string, chunkSize int) (storage.File, error) {
-	var childUnderlayer storage.File
-	var err error
-
-	// Check if the file already exists
-	if u := d.Underlayer(); u != nil {
-		// Create the file in the underlayer, that will check that the file already exists
-		childUnderlayer, err = u.CreateFile(ctx, name, chunkSize)
-		if err != nil {
-			return nil, err
-		}
-	} else if _, exist := d.files[name]; exist {
-		// If the file already exists, return an error
-		return nil, fmt.Errorf("couldn't create file %q: %w", name, storage.ErrFileAlreadyExists)
+// RemoveDirectory removes a directory.
+func (d *directory) RemoveDirectory(_ context.Context, name string) error {
+	// Check if there is a file with this name
+	if _, ok := d.files[name]; ok {
+		return fmt.Errorf("%w: %q", storage.ErrIsFile, name)
 	}
 
-	f := newFile(chunkSize, &fileOptions{
-		Underlayer: childUnderlayer,
-	})
-	d.files[name] = f
-	return f, nil
-}
-
-// RemoveDirectory removes a child directory of the directory.
-func (d *Directory) RemoveDirectory(ctx context.Context, name string) error {
-	// Check if the directory already exists
-	if u := d.Underlayer(); u != nil {
-		// If there is an underlayer, then creates it here: it will check if
-		// the directory already exists
-		if err := u.RemoveDirectory(ctx, name); err != nil {
-			return err
-		}
-	} else if _, exist := d.directories[name]; !exist {
-		// If there is no corresponding directory, then return an error
-		return storage.ErrDirectoryNotExists
+	// Check if there is a directory with this name
+	if _, ok := d.directories[name]; !ok {
+		return fmt.Errorf("%w: %q", storage.ErrDirectoryNotFound, name)
 	}
 
-	// Actually delete the directory
+	// Remove the directory
 	delete(d.directories, name)
 
 	return nil
 }
 
-// RemoveFile removes a child file of the directory.
-func (d *Directory) RemoveFile(ctx context.Context, name string) error {
-	// Check if the file exists
-	if u := d.Underlayer(); u != nil {
-		// If there is an underlayer, remove it there, it will check if the file exists
-		if err := u.RemoveFile(ctx, name); err != nil {
-			return err
-		}
-	} else if _, exist := d.files[name]; !exist {
-		// If the file doesn't exists, return an error
-		return storage.ErrFileNotExists
-	}
-	delete(d.files, name)
-	return nil
+// ListDirectories returns a map of directories.
+func (d *directory) ListDirectories(_ context.Context) (map[string]storage.Directory, error) {
+	return maps.Clone(d.directories), nil
 }
 
-func (d *Directory) checkIfFileOrDirectoryAlreadyExists(name string) error {
-	if _, exist := d.directories[name]; exist {
-		return fmt.Errorf("%w: %q", storage.ErrDirectoryAlreadyExists, name)
-	}
-	if _, exist := d.files[name]; exist {
-		return fmt.Errorf("%w: %q", storage.ErrFileAlreadyExists, name)
-	}
-	return nil
-}
-
-// RenameFile renames a child file of the directory.
-func (d *Directory) RenameFile(
-	ctx context.Context,
-	name string,
-	newParent storage.Directory,
-	newName string,
-	noReplace bool,
-) error {
-	// If there is an underlayer, then rename the file here first
-	if u := d.Underlayer(); u != nil {
-		if err := u.RenameFile(ctx, name, newParent.Underlayer(), newName, noReplace); err != nil {
-			return err
-		}
+// RemoveFile removes a file.
+func (d *directory) RemoveFile(_ context.Context, name string) error {
+	// Check if there is a directory with this name
+	if _, ok := d.directories[name]; ok {
+		return fmt.Errorf("%w: %q", storage.ErrIsDirectory, name)
 	}
 
-	// Get the directory or the file
-	f, fileExist := d.files[name]
-	if !fileExist {
-		return storage.ErrFileNotExists
+	// Check if there is a file with this name
+	if _, ok := d.files[name]; !ok {
+		return fmt.Errorf("%w: %q", storage.ErrFileNotFound, name)
 	}
 
-	// Check if it doesn't not exist already
-	if err := newParent.(*Directory).checkIfFileOrDirectoryAlreadyExists(newName); err != nil {
-		if errors.Is(err, storage.ErrFileAlreadyExists) && noReplace {
-			// If noReplace is set and the file already exists, return error
-			return err
-		} else if !errors.Is(err, storage.ErrFileAlreadyExists) {
-			// If another error, then return
-			return err
-		}
-	}
-
-	// Add it to new parent and remove it from current parent
-	newParent.(*Directory).files[newName] = f
+	// Remove the file
 	delete(d.files, name)
 
 	return nil
 }
 
-// RenameDirectory renames a child directory of the directory.
-func (d *Directory) RenameDirectory(
-	ctx context.Context,
+// RenameFile renames a file.
+func (d *directory) RenameFile(
+	_ context.Context,
 	name string,
 	newParent storage.Directory,
 	newName string,
 	noReplace bool,
 ) error {
-	// If there is an underlayer, then rename the directory here first
-	if u := d.Underlayer(); u != nil {
-		if err := u.RenameDirectory(ctx, name, newParent.Underlayer(), newName, noReplace); err != nil {
-			return err
+	// Check if there is a file with this name
+	if _, ok := d.files[name]; !ok {
+		return fmt.Errorf("%w: %q", storage.ErrFileNotFound, name)
+	}
+
+	// Check if there is a directory with the new name
+	_, directoryExists := newParent.(*directory).directories[newName]
+	if directoryExists {
+		if noReplace {
+			return fmt.Errorf("%w: %q", storage.ErrDirectoryAlreadyExists, newName)
 		}
+
+		// Delete directory
+		delete(newParent.(*directory).directories, newName)
 	}
 
-	// Get the directory or the file
-	dir, dirExist := d.directories[name]
-	if !dirExist {
-		return storage.ErrFileNotExists
-	}
-
-	// Check if it doesn't not exist already
-	if err := newParent.(*Directory).checkIfFileOrDirectoryAlreadyExists(newName); err != nil {
-		if errors.Is(err, storage.ErrDirectoryAlreadyExists) && noReplace {
-			// If noReplace is set and the file already exists, return error
-			return err
-		} else if !errors.Is(err, storage.ErrDirectoryAlreadyExists) {
-			// If another error, then return
-			return err
+	// Check if there is a file with the new name
+	_, fileExists := newParent.(*directory).files[newName]
+	if fileExists {
+		if noReplace {
+			return fmt.Errorf("%w: %q", storage.ErrFileAlreadyExists, newName)
 		}
+
+		// Delete file
+		delete(newParent.(*directory).files, newName)
 	}
 
-	// Add it to new parent and remove it from current parent
-	newParent.(*Directory).directories[newName] = dir
+	// Move the file
+	newParent.(*directory).files[newName] = d.files[name]
+	delete(d.files, name)
+
+	return nil
+}
+
+// RenameDirectory renames a directory.
+func (d *directory) RenameDirectory(
+	_ context.Context,
+	name string,
+	newParent storage.Directory,
+	newName string,
+	noReplace bool,
+) error {
+	// Check if there is a directory with this name
+	if _, ok := d.directories[name]; !ok {
+		return fmt.Errorf("%w: %q", storage.ErrDirectoryNotFound, name)
+	}
+
+	// Check if there is a directory with the new name
+	_, directoryExists := newParent.(*directory).directories[newName]
+	if directoryExists {
+		if noReplace {
+			return fmt.Errorf("%w: %q", storage.ErrDirectoryAlreadyExists, newName)
+		}
+
+		// Delete directory
+		delete(newParent.(*directory).directories, newName)
+	}
+
+	// Check if there is a file with the new name
+	_, fileExists := newParent.(*directory).files[newName]
+	if fileExists {
+		if noReplace {
+			return fmt.Errorf("%w: %q", storage.ErrFileAlreadyExists, newName)
+		}
+
+		// Delete file
+		delete(newParent.(*directory).files, newName)
+	}
+
+	// Move the directory
+	newParent.(*directory).directories[newName] = d.directories[name]
 	delete(d.directories, name)
 
 	return nil

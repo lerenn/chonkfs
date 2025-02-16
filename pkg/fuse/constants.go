@@ -1,4 +1,4 @@
-package wrapper
+package fuse
 
 const (
 	// DefaultChunkSize is the default chunk size.

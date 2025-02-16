@@ -2,6 +2,8 @@ package storage
 
 import (
 	"context"
+
+	"github.com/lerenn/chonkfs/pkg/info"
 )
 
 // Directory represents a directory in the storage.
@@ -11,7 +13,7 @@ type Directory interface {
 	CreateDirectory(ctx context.Context, name string) (Directory, error)
 	GetDirectory(ctx context.Context, name string) (Directory, error)
 	ListDirectories(ctx context.Context) (map[string]Directory, error)
-	Info(ctx context.Context) (DirectoryInfo, error)
+	GetInfo(ctx context.Context) (info.Directory, error)
 	RemoveDirectory(ctx context.Context, name string) error
 	RenameDirectory(ctx context.Context, name string, newParent Directory, newName string, noReplace bool) error
 
@@ -19,33 +21,17 @@ type Directory interface {
 
 	GetFile(ctx context.Context, name string) (File, error)
 	ListFiles(ctx context.Context) (map[string]File, error)
-	CreateFile(ctx context.Context, name string, chunkSize int) (File, error)
+	CreateFile(ctx context.Context, name string, info info.File) (File, error)
 	RemoveFile(ctx context.Context, name string) error
 	RenameFile(ctx context.Context, name string, newParent Directory, newName string, noReplace bool) error
-
-	// Underlayer
-
-	Underlayer() Directory
-}
-
-// DirectoryInfo represents the information of a directory.
-type DirectoryInfo struct {
 }
 
 // File represents a file in the storage.
 type File interface {
-	Size(ctx context.Context) (int, error)
-	WriteChunk(ctx context.Context, chunkIndex int, start int, end *int, data []byte) (int, error)
-	ReadChunk(ctx context.Context, chunkIndex int, data []byte, start int, end *int) (int, error)
-	ChunksCount(ctx context.Context) (int, error)
+	ImportChunk(ctx context.Context, index int, data []byte) error
+	WriteChunk(ctx context.Context, index int, data []byte, offset int) (int, error)
+	ReadChunk(ctx context.Context, index int, data []byte, offset int) (int, error)
 	ResizeChunksNb(ctx context.Context, size int) error
-	LastChunkSize(ctx context.Context) (int, error)
 	ResizeLastChunk(ctx context.Context, size int) (changed int, err error)
-	Info(ctx context.Context) (FileInfo, error)
-	Underlayer() File
-}
-
-// FileInfo represents the information of a file.
-type FileInfo struct {
-	ChunkSize int
+	GetInfo(ctx context.Context) (info.File, error)
 }

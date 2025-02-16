@@ -10,8 +10,8 @@ import (
 	"github.com/hanwen/go-fuse/v2/fs"
 	"github.com/hanwen/go-fuse/v2/fuse"
 	"github.com/lerenn/chonkfs/pkg/chonker"
+	fuse1 "github.com/lerenn/chonkfs/pkg/fuse"
 	"github.com/lerenn/chonkfs/pkg/storage/mem"
-	"github.com/lerenn/chonkfs/pkg/wrapper"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -50,8 +50,8 @@ func (suite *Suite) createChonkFS(
 	suite.Require().NoError(err)
 
 	// Create a chonkfs
-	chFS := wrapper.NewDirectory(backend,
-		wrapper.WithDirectoryChunkSize(chunkSize))
+	chFS := fuse1.NewDirectory(backend,
+		fuse1.WithDirectoryChunkSize(chunkSize))
 
 	// Mount the ChonkFS
 	server, err = fs.Mount(path, chFS, &fs.Options{
@@ -68,7 +68,7 @@ func (suite *Suite) createChonkFS(
 
 func (suite *Suite) TestWriteOnlyThenReadOnly() {
 	// Mount chunkfs
-	c, err := chonker.NewDirectory(context.Background(), mem.NewDirectory(nil))
+	c, err := chonker.NewDirectory(context.Background(), mem.NewDirectory())
 	suite.Require().NoError(err)
 	path, srv := suite.createChonkFS(c, 4096)
 
@@ -116,7 +116,7 @@ func (suite *Suite) TestWriteOnlyThenReadOnly() {
 
 func (suite *Suite) TestReadWriteMode() {
 	// Mount chunkfs
-	c, err := chonker.NewDirectory(context.Background(), mem.NewDirectory(nil))
+	c, err := chonker.NewDirectory(context.Background(), mem.NewDirectory())
 	suite.Require().NoError(err)
 	path, srv := suite.createChonkFS(c, 4096)
 
@@ -154,7 +154,7 @@ func (suite *Suite) TestReadWriteMode() {
 
 func (suite *Suite) TestRandomReadWrite() {
 	// Mount chunkfs
-	c, err := chonker.NewDirectory(context.Background(), mem.NewDirectory(nil))
+	c, err := chonker.NewDirectory(context.Background(), mem.NewDirectory())
 	suite.Require().NoError(err)
 	path, srv := suite.createChonkFS(c, 4096)
 
@@ -181,6 +181,72 @@ func (suite *Suite) TestRandomReadWrite() {
 		// Compare buffers
 		suite.Require().Equal(string(buf), string(readBuf))
 	}
+
+	// Close file
+	err = f.Close()
+	suite.Require().NoError(err)
+
+	// Unmount chunkfs
+	err = srv.Unmount()
+	suite.Require().NoError(err)
+}
+
+func (suite *Suite) TestCreateWriteCloseThenOpenReadClose() {
+	// Mount chunkfs
+	c, err := chonker.NewDirectory(context.Background(), mem.NewDirectory())
+	suite.Require().NoError(err)
+	path, srv := suite.createChonkFS(c, 8192)
+
+	// Create file
+	f, err := os.OpenFile(path+"/hello.txt", os.O_RDWR|os.O_CREATE, 0755)
+	suite.Require().NoError(err)
+
+	// Write to file
+	buf := []byte("Hello, World!")
+	n, err := f.Write(buf)
+	suite.Require().NoError(err)
+	suite.Require().Equal(len(buf), n)
+
+	// Close file
+	err = f.Close()
+	suite.Require().NoError(err)
+
+	// Open file
+	f, err = os.OpenFile(path+"/hello.txt", os.O_RDWR, 0755)
+	suite.Require().NoError(err)
+
+	// Read from file
+	readBuf := make([]byte, len(buf))
+	n, err = f.Read(readBuf)
+	suite.Require().NoError(err)
+	suite.Require().Equal(len(buf), n)
+
+	// Close file
+	err = f.Close()
+	suite.Require().NoError(err)
+
+	// Unmount chunkfs
+	err = srv.Unmount()
+	suite.Require().NoError(err)
+}
+
+func (suite *Suite) TestCreateAnEmptyFileAndReopenIt() {
+	// Mount chunkfs
+	c, err := chonker.NewDirectory(context.Background(), mem.NewDirectory())
+	suite.Require().NoError(err)
+	path, srv := suite.createChonkFS(c, 4096)
+
+	// Create file
+	f, err := os.OpenFile(path+"/hello.txt", os.O_RDWR|os.O_CREATE, 0755)
+	suite.Require().NoError(err)
+
+	// Close file
+	err = f.Close()
+	suite.Require().NoError(err)
+
+	// Open file
+	f, err = os.OpenFile(path+"/hello.txt", os.O_RDWR, 0755)
+	suite.Require().NoError(err)
 
 	// Close file
 	err = f.Close()

@@ -1,6 +1,7 @@
-package mem
+package disk
 
 import (
+	"os"
 	"testing"
 
 	"github.com/lerenn/chonkfs/pkg/storage/test"
@@ -13,8 +14,17 @@ func TestDirectorySuite(t *testing.T) {
 
 type DirectorySuite struct {
 	test.DirectorySuite
+	Path string
 }
 
 func (suite *DirectorySuite) SetupTest() {
-	suite.Directory = NewDirectory()
+	path, err := os.MkdirTemp("", "chonkfs-test-*")
+	suite.Require().NoError(err)
+	suite.Path = path
+	suite.Directory = NewDirectory(path)
+}
+
+func (suite *DirectorySuite) TearDownTest() {
+	err := os.RemoveAll(suite.Path)
+	suite.Require().NoError(err)
 }

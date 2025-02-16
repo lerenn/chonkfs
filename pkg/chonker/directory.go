@@ -9,6 +9,7 @@ import (
 	"maps"
 	"slices"
 
+	"github.com/lerenn/chonkfs/pkg/info"
 	"github.com/lerenn/chonkfs/pkg/storage"
 )
 
@@ -26,18 +27,18 @@ func WithDirectoryLogger(logger *log.Logger) directoryOption {
 var _ Directory = (*directory)(nil)
 
 type directory struct {
-	underlayer storage.Directory
-	opts       []directoryOption
-	logger     *log.Logger
+	storage storage.Directory
+	opts    []directoryOption
+	logger  *log.Logger
 }
 
 // NewDirectory creates a new directory.
 func NewDirectory(_ context.Context, d storage.Directory, opts ...directoryOption) (Directory, error) {
 	// Create a default directory
 	dir := &directory{
-		underlayer: d,
-		opts:       opts,
-		logger:     log.New(io.Discard, "", 0),
+		storage: d,
+		opts:    opts,
+		logger:  log.New(io.Discard, "", 0),
 	}
 
 	// Apply options
@@ -60,16 +61,16 @@ func (dir *directory) SetAttributes(_ context.Context, _ DirectoryAttributes) er
 
 func (dir *directory) checkIfFileOrDirectoryAlreadyExists(ctx context.Context, name string) error {
 	// Check in directories
-	_, err := dir.underlayer.GetDirectory(ctx, name)
-	if err != nil && !errors.Is(err, storage.ErrDirectoryNotExists) {
+	_, err := dir.storage.GetDirectory(ctx, name)
+	if err != nil && !errors.Is(err, storage.ErrDirectoryNotFound) {
 		return fmt.Errorf("%w: %w", ErrChonker, err)
 	} else if err == nil {
 		return ErrAlreadyExists
 	}
 
 	// Check in files
-	_, err = dir.underlayer.GetFile(ctx, name)
-	if err != nil && !errors.Is(err, storage.ErrFileNotExists) {
+	_, err = dir.storage.GetFile(ctx, name)
+	if err != nil && !errors.Is(err, storage.ErrFileNotFound) {
 		return fmt.Errorf("%w: %w", ErrChonker, err)
 	} else if err == nil {
 		return ErrAlreadyExists
@@ -86,7 +87,7 @@ func (dir *directory) CreateDirectory(ctx context.Context, name string) (Directo
 	}
 
 	// Create a new directory on storage
-	nd, err := dir.underlayer.CreateDirectory(ctx, name)
+	nd, err := dir.storage.CreateDirectory(ctx, name)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrChonker, err)
 	}
@@ -103,17 +104,17 @@ func (dir *directory) CreateDirectory(ctx context.Context, name string) (Directo
 // GetDirectory returns a child directory of the directory.
 func (dir *directory) GetDirectory(ctx context.Context, name string) (Directory, error) {
 	// Check if this is not already a file
-	_, err := dir.underlayer.GetFile(ctx, name)
-	if err != nil && !errors.Is(err, storage.ErrFileNotExists) {
+	_, err := dir.storage.GetFile(ctx, name)
+	if err != nil && !errors.Is(err, storage.ErrFileNotFound) && !errors.Is(err, storage.ErrIsDirectory) {
 		return nil, fmt.Errorf("%w: %w", ErrChonker, err)
 	} else if err == nil {
 		return nil, ErrNotDirectory
 	}
 
 	// Get and check if it exists
-	d, err := dir.underlayer.GetDirectory(ctx, name)
+	d, err := dir.storage.GetDirectory(ctx, name)
 	if err != nil {
-		if errors.Is(err, storage.ErrDirectoryNotExists) {
+		if errors.Is(err, storage.ErrDirectoryNotFound) {
 			return nil, ErrNoEntry
 		}
 		return nil, fmt.Errorf("%w: %w", ErrChonker, err)
@@ -125,16 +126,16 @@ func (dir *directory) GetDirectory(ctx context.Context, name string) (Directory,
 // GetFile returns a child file of the directory.
 func (dir *directory) GetFile(ctx context.Context, name string) (File, error) {
 	// Get and check if it exists
-	f, err := dir.underlayer.GetFile(ctx, name)
+	f, err := dir.storage.GetFile(ctx, name)
 	if err != nil {
-		if errors.Is(err, storage.ErrFileNotExists) {
+		if errors.Is(err, storage.ErrFileNotFound) {
 			return nil, ErrNoEntry
 		}
 		return nil, fmt.Errorf("%w: %w", ErrChonker, err)
 	}
 
 	// Get file info
-	info, err := f.Info(ctx)
+	info, err := f.GetInfo(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrChonker, err)
 	}
@@ -150,7 +151,9 @@ func (dir *directory) CreateFile(ctx context.Context, name string, chunkSize int
 	}
 
 	// Create file on storage
-	sf, err := dir.underlayer.CreateFile(ctx, name, chunkSize)
+	sf, err := dir.storage.CreateFile(ctx, name, info.File{
+		ChunkSize: chunkSize,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrChonker, err)
 	}
@@ -167,17 +170,17 @@ func (dir *directory) CreateFile(ctx context.Context, name string, chunkSize int
 
 // RemoveDirectory removes a child directory of the directory.
 func (dir *directory) RemoveDirectory(ctx context.Context, name string) error {
-	return dir.underlayer.RemoveDirectory(ctx, name)
+	return dir.storage.RemoveDirectory(ctx, name)
 }
 
 // RemoveFile removes a child file of the directory.
 func (dir *directory) RemoveFile(ctx context.Context, name string) error {
-	return dir.underlayer.RemoveFile(ctx, name)
+	return dir.storage.RemoveFile(ctx, name)
 }
 
 // ListFiles returns the list of files in the directory.
 func (dir *directory) ListFiles(ctx context.Context) ([]string, error) {
-	m, err := dir.underlayer.ListFiles(ctx)
+	m, err := dir.storage.ListFiles(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrChonker, err)
 	}
@@ -193,11 +196,11 @@ func (dir *directory) RenameFile(
 	newName string,
 	noReplace bool,
 ) error {
-	err := dir.underlayer.RenameFile(ctx, name, newParent.(*directory).underlayer, newName, noReplace)
+	err := dir.storage.RenameFile(ctx, name, newParent.(*directory).storage, newName, noReplace)
 	switch {
 	case err == nil:
 		return nil
-	case errors.Is(err, storage.ErrFileNotExists):
+	case errors.Is(err, storage.ErrFileNotFound):
 		return ErrNoEntry
 	case errors.Is(err, storage.ErrFileAlreadyExists):
 		return ErrAlreadyExists
@@ -208,7 +211,7 @@ func (dir *directory) RenameFile(
 
 // ListDirectories returns the list of directories in the directory.
 func (dir *directory) ListDirectories(ctx context.Context) ([]string, error) {
-	m, err := dir.underlayer.ListDirectories(ctx)
+	m, err := dir.storage.ListDirectories(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrChonker, err)
 	}
@@ -224,11 +227,11 @@ func (dir *directory) RenameDirectory(
 	newName string,
 	noReplace bool,
 ) error {
-	err := dir.underlayer.RenameDirectory(ctx, name, newParent.(*directory).underlayer, newName, noReplace)
+	err := dir.storage.RenameDirectory(ctx, name, newParent.(*directory).storage, newName, noReplace)
 	switch {
 	case err == nil:
 		return nil
-	case errors.Is(err, storage.ErrDirectoryNotExists):
+	case errors.Is(err, storage.ErrDirectoryNotFound):
 		return ErrNoEntry
 	case errors.Is(err, storage.ErrDirectoryAlreadyExists):
 		return ErrAlreadyExists

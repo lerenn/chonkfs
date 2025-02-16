@@ -23,21 +23,30 @@ The file-system is divided in three main components:
 
 ```mermaid
 flowchart LR
-    User --File Operations<br/>through FUSE--> Wrapper
+    User --File Operations<br/>through FUSE--> FuseWrapper
     subgraph "ChonkFS"
-        Wrapper[Wrapper<br><i>Abstract FS specifics</i>] --> Chonker[Chonker<br><i>Split files/Join chunks</i>]
-        Chonker --Read/Store--> Storage
+        FuseWrapper[FuseWrapper<br><i>Abstract FS specifics</i>] --> Chonker[Chonker<br><i>Split files/Join chunks</i>]
+        Chonker --Read/Store--> LayerRam
 
         subgraph "Storage"
-            RAM --> LocalDisk[Local Disk] 
-            LocalDisk --> Remote
+            subgraph LayerRam[Layer]
+                RAM 
+            end
+            subgraph LayerDisk[Layer]
+                LocalDisk[Local Disk]
+            end
+            
+            FTP
         end
     end
+
+    LayerRam --> LayerDisk
+    LayerDisk --> FTP
 ```
 
 ## Storage
 
 * Memory (RAM): Implemented
-* Disk: TODO
+* Disk: Implemented
 * FTP: TODO
 * S3: TODO

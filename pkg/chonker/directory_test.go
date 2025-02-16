@@ -18,7 +18,7 @@ type DirectorySuite struct {
 
 func (suite *DirectorySuite) TestListFiles() {
 	// Create a directory
-	d, err := NewDirectory(context.Background(), mem.NewDirectory(nil))
+	d, err := NewDirectory(context.Background(), mem.NewDirectory())
 	suite.Require().NoError(err)
 
 	// Create a file
@@ -33,4 +33,34 @@ func (suite *DirectorySuite) TestListFiles() {
 	files, err := d.ListFiles(context.Background())
 	suite.Require().NoError(err)
 	suite.Require().Len(files, 2)
+}
+
+func (suite *DirectorySuite) GetDirectory() {
+	// Create a directory
+	d, err := NewDirectory(context.Background(), mem.NewDirectory())
+	suite.Require().NoError(err)
+
+	// Create a directory
+	_, err = d.CreateDirectory(context.Background(), "DirA")
+	suite.Require().NoError(err)
+
+	// Get the directory
+	dir, err := d.GetDirectory(context.Background(), "DirA")
+	suite.Require().NoError(err)
+	suite.Require().NotNil(dir)
+}
+
+func (suite *DirectorySuite) TestGetFile() {
+	// Create a directory
+	d, err := NewDirectory(context.Background(), mem.NewDirectory())
+	suite.Require().NoError(err)
+
+	// Create a file
+	_, err = d.CreateFile(context.Background(), "FileA.txt", 4)
+	suite.Require().NoError(err)
+
+	// Get the file
+	f, err := d.GetFile(context.Background(), "FileA.txt")
+	suite.Require().NoError(err)
+	suite.Require().NotNil(f)
 }

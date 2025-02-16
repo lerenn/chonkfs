@@ -4,203 +4,187 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/lerenn/chonkfs/pkg/info"
 	"github.com/lerenn/chonkfs/pkg/storage"
 )
 
-type fileOptions struct {
-	Underlayer storage.File
+type chunk struct {
+	Data []byte
+	Size int
 }
 
 type file struct {
-	data      [][]byte
-	chunkSize int
-	opts      *fileOptions
+	chunks        []*chunk
+	chunkSize     int
+	lastChunkSize int
 }
 
-func newFile(chunkSize int, opts *fileOptions) *file {
-	return &file{
-		data:      make([][]byte, 0),
-		chunkSize: chunkSize,
-		opts:      opts,
-	}
-}
-
-func (f *file) Underlayer() storage.File {
-	if f.opts == nil {
-		return nil
+func newFile(info info.File) (*file, error) {
+	// Check chunk size
+	if info.ChunkSize <= 0 {
+		return nil, fmt.Errorf("%w: %d", storage.ErrInvalidChunkSize, info.ChunkSize)
 	}
 
-	return f.opts.Underlayer
+	// Create file representation
+	f := &file{
+		chunkSize:     info.ChunkSize,
+		chunks:        make([]*chunk, info.ChunksCount),
+		lastChunkSize: info.LastChunkSize,
+	}
+
+	return f, nil
 }
 
-// Info returns the file info.
-func (f *file) Info(_ context.Context) (storage.FileInfo, error) {
-	return storage.FileInfo{
-		ChunkSize: f.chunkSize,
+func (f *file) GetInfo(_ context.Context) (info.File, error) {
+	size := 0
+	chunksCount := len(f.chunks)
+	if chunksCount > 0 {
+		size = (chunksCount-1)*f.chunkSize + f.lastChunkSize
+	}
+
+	return info.File{
+		Size:          size,
+		ChunkSize:     f.chunkSize,
+		ChunksCount:   chunksCount,
+		LastChunkSize: f.lastChunkSize,
 	}, nil
 }
 
-// ReadChunk reads data from a chunk.
-func (f *file) ReadChunk(_ context.Context, chunkIndex int, data []byte, start int, end *int) (int, error) {
-	// Check if the chunk index is valid
-	if chunkIndex < 0 || chunkIndex >= len(f.data) {
-		return 0, storage.ErrInvalidChunkNb
+func (f *file) checkReadWriteChunkParams(index int, offset int) error {
+	// Check if chunk index is correct
+	if index < 0 || index >= len(f.chunks) {
+		return fmt.Errorf("%w: %d", storage.ErrInvalidChunkNb, index)
 	}
 
-	// Check if the start is valid
-	if start < 0 || start >= len(f.data[chunkIndex]) {
-		return 0, fmt.Errorf("%w: start is %d", storage.ErrInvalidStartOffset, start)
+	// Check if there is data to read
+	if f.chunks[index] == nil {
+		return fmt.Errorf("%w: %d", storage.ErrChunkNotFound, index)
 	}
 
-	// Check if the end is valid
-	if end != nil && (*end < 0 || *end > len(f.data[chunkIndex])) {
-		return 0, fmt.Errorf("%w: end is %d", storage.ErrInvalidEndOffset, start)
+	// Check if offset is correct
+	if offset < 0 || offset >= f.chunkSize {
+		return fmt.Errorf("%w: %d", storage.ErrInvalidOffset, offset)
 	}
 
-	// Set the end if it is nil
-	if end == nil {
-		end = new(int)
-		*end = len(f.data[chunkIndex])
-	}
-
-	// Read the data
-	return copy(data, f.data[chunkIndex][start:*end]), nil
-}
-
-// ChunksCount returns the number of chunks.
-func (f *file) ChunksCount(_ context.Context) (int, error) {
-	return len(f.data), nil
-}
-
-func (f *file) checkWriteChunkParams(chunkIndex int, start int, end *int) error {
-	// Check if the chunk index is valid
-	if chunkIndex < 0 || chunkIndex >= len(f.data) {
-		return storage.ErrInvalidChunkNb
-	}
-
-	// Check if the start is valid
-	if start < 0 || start >= len(f.data[chunkIndex]) {
-		return fmt.Errorf("%w: start is %d", storage.ErrInvalidStartOffset, start)
-	}
-
-	// Check if the end is valid
-	if end != nil && (*end < 0 || *end > len(f.data[chunkIndex])) {
-		return fmt.Errorf("%w: end is %d", storage.ErrInvalidEndOffset, start)
+	// Check if this is the last chunk, that the offset is correct$
+	if index == len(f.chunks)-1 && offset >= f.chunks[index].Size {
+		return fmt.Errorf("%w: %d", storage.ErrInvalidOffset, offset)
 	}
 
 	return nil
 }
 
-// WriteChunk writes data to a chunk.
-func (f *file) WriteChunk(ctx context.Context, chunkIndex int, start int, end *int, data []byte) (int, error) {
+func (f *file) WriteChunk(_ context.Context, index int, data []byte, offset int) (int, error) {
 	// Check params
-	if err := f.checkWriteChunkParams(chunkIndex, start, end); err != nil {
+	if err := f.checkReadWriteChunkParams(index, offset); err != nil {
 		return 0, err
 	}
 
-	// Write it in the underlayer, if there is one
-	if u := f.Underlayer(); u != nil {
-		if w, err := u.WriteChunk(ctx, chunkIndex, start, end, data); err != nil {
-			return w, err
-		}
-	}
-
-	// Set the end if it is nil
-	if end == nil {
-		end = new(int)
-		*end = len(f.data[chunkIndex])
-	}
-
-	// Write the data
-	return copy(f.data[chunkIndex][start:*end], data), nil
+	// Write data
+	return copy(f.chunks[index].Data[offset:], data), nil
 }
 
-// ResizeChunksNb resizes the number of chunks.
-func (f *file) ResizeChunksNb(ctx context.Context, nb int) error {
-	// Check if the number of chunks is valid
-	if nb < 0 {
-		return storage.ErrInvalidChunkNb
+func (f *file) ReadChunk(_ context.Context, index int, data []byte, offset int) (int, error) {
+	// Check params
+	if err := f.checkReadWriteChunkParams(index, offset); err != nil {
+		return 0, err
 	}
 
-	// If there is an underlayer, apply the resize here first
-	if u := f.Underlayer(); u != nil {
-		if err := u.ResizeChunksNb(ctx, nb); err != nil {
-			return err
-		}
+	// Read data
+	return copy(data, f.chunks[index].Data[offset:]), nil
+}
+
+func (f *file) ResizeChunksNb(_ context.Context, size int) error {
+	// Check size is correct
+	if size < 0 {
+		return fmt.Errorf("%w: %d", storage.ErrInvalidChunkNb, size)
 	}
 
-	// Apply the resizing
-	if nb > len(f.data) {
-		// Check if the last chunk is full
-		if len(f.data) > 0 && len(f.data[len(f.data)-1]) != f.chunkSize {
-			return storage.ErrLastChunkNotFull
-		}
+	// Check the last chunk size is full
+	if len(f.chunks) > 0 && f.lastChunkSize != f.chunkSize {
+		return fmt.Errorf("%w", storage.ErrLastChunkNotFull)
+	}
 
+	// Resize chunks
+	if size > len(f.chunks) {
 		// Add chunks
-		for i := len(f.data); i < nb; i++ {
-			f.data = append(f.data, make([]byte, f.chunkSize))
+		for i := len(f.chunks); i < size; i++ {
+			f.chunks = append(f.chunks, &chunk{
+				Data: make([]byte, f.chunkSize),
+				Size: f.chunkSize,
+			})
 		}
-	} else if nb < len(f.data) {
+
+		// Set last chunk size
+		f.lastChunkSize = f.chunkSize
+	} else {
 		// Remove chunks
-		f.data = f.data[:nb]
+		f.chunks = f.chunks[:size]
 	}
 
 	return nil
 }
 
-// ResizeLastChunk resizes the last chunk.
-func (f *file) ResizeLastChunk(ctx context.Context, size int) (changed int, err error) {
-	// Check if the size is valid
+func (f *file) ResizeLastChunk(_ context.Context, size int) (changed int, err error) {
+	// Check size is correct
 	if size < 0 || size > f.chunkSize {
-		return 0, storage.ErrInvalidChunkSize
+		return 0, fmt.Errorf("%w: %d", storage.ErrInvalidChunkSize, size)
 	}
 
-	// Check if there is a chunk to resize
-	if len(f.data) == 0 {
-		return 0, storage.ErrNoChunk
+	// Check if there is a last chunk
+	if len(f.chunks) == 0 {
+		return 0, fmt.Errorf("%w", storage.ErrNoChunk)
 	}
 
-	// Apply the resize to the underlayer if there is one
-	if u := f.Underlayer(); u != nil {
-		if c, err := u.ResizeLastChunk(ctx, size); err != nil {
-			return c, err
-		}
+	// Check if the last chunk is present
+	lastChunk := f.chunks[len(f.chunks)-1]
+	if lastChunk == nil {
+		return 0, fmt.Errorf("%w", storage.ErrChunkNotFound)
 	}
 
-	lastChunkSize := len(f.data[len(f.data)-1])
-	toModify := size - lastChunkSize
-	if toModify < 0 {
-		// Truncate the last chunk
-		f.data[len(f.data)-1] = f.data[len(f.data)-1][:size]
-		return toModify, nil
-	} else if toModify > 0 {
-		// Add data to the last chunk
-		f.data[len(f.data)-1] = append(f.data[len(f.data)-1], make([]byte, toModify)...)
-		return toModify, nil
+	// Resize last chunk
+	oldSize := lastChunk.Size
+	if size > oldSize {
+		// Add data
+		lastChunk.Data = append(lastChunk.Data, make([]byte, size-oldSize)...)
+	} else {
+		// Remove data
+		lastChunk.Data = lastChunk.Data[:size]
 	}
 
-	return 0, nil
+	// Set size
+	lastChunk.Size = size
+	f.lastChunkSize = size
+
+	return size - oldSize, nil
 }
 
-// Size returns the size of the file.
-func (f *file) Size(_ context.Context) (int, error) {
-	// Check if there is no data
-	size := len(f.data)
-	if size == 0 {
-		return 0, nil
+func (f *file) ImportChunk(_ context.Context, index int, data []byte) error {
+	// Check if chunk index is correct
+	if index < 0 || index >= len(f.chunks) {
+		return fmt.Errorf("%w: %d", storage.ErrInvalidChunkNb, index)
 	}
 
-	// Return the count of all chunks except the last one, multiplied by the chunk size
-	// + the length of the last chunk
-	return (size-1)*f.chunkSize + len(f.data[size-1]), nil
-}
-
-// LastChunkSize returns the size of the last chunk.
-func (f *file) LastChunkSize(_ context.Context) (int, error) {
-	// Check if there is no data
-	if len(f.data) == 0 {
-		return 0, storage.ErrNoChunk
+	// Check if the chunk is empty
+	if f.chunks[index] != nil {
+		return fmt.Errorf("%w: %d", storage.ErrChunkAlreadyExists, index)
 	}
 
-	return len(f.data[len(f.data)-1]), nil
+	// Check if length of data is correct
+	if (len(data) != f.chunkSize && index != len(f.chunks)-1) || len(data) > f.chunkSize {
+		return fmt.Errorf("%w: %d", storage.ErrInvalidChunkSize, len(data))
+	}
+
+	// Import data
+	f.chunks[index] = &chunk{
+		Data: data,
+		Size: len(data),
+	}
+
+	// If this is the last chunk, set the last chunk size
+	if index == len(f.chunks)-1 {
+		f.lastChunkSize = len(data)
+	}
+
+	return nil
 }
