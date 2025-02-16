@@ -195,7 +195,7 @@ func (suite *Suite) TestCreateWriteCloseThenOpenReadClose() {
 	// Mount chunkfs
 	c, err := chonker.NewDirectory(context.Background(), mem.NewDirectory())
 	suite.Require().NoError(err)
-	path, srv := suite.createChonkFS(c, 4096)
+	path, srv := suite.createChonkFS(c, 8192)
 
 	// Create file
 	f, err := os.OpenFile(path+"/hello.txt", os.O_RDWR|os.O_CREATE, 0755)

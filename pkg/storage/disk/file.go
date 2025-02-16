@@ -71,13 +71,7 @@ func (f *file) getChunckPath(nb int) string {
 	return path.Join(f.path, getChunkName(nb))
 }
 
-func (f *file) ImportChunk(ctx context.Context, index int, data []byte) error {
-	// Get info
-	info, err := f.GetInfo(context.Background())
-	if err != nil {
-		return err
-	}
-
+func (f *file) checkImportChunkParams(info info.File, index int, data []byte) error {
 	// Check if chunk index is correct
 	if index < 0 || index >= info.ChunksCount {
 		return fmt.Errorf("%w: %d", storage.ErrInvalidChunkNb, index)
@@ -96,7 +90,24 @@ func (f *file) ImportChunk(ctx context.Context, index int, data []byte) error {
 		return fmt.Errorf("%w: %d", storage.ErrInvalidChunkSize, len(data))
 	}
 
+	return nil
+}
+
+// ImportChunk imports a chunk of data.
+func (f *file) ImportChunk(ctx context.Context, index int, data []byte) error {
+	// Get info
+	info, err := f.GetInfo(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Check params
+	if err := f.checkImportChunkParams(info, index, data); err != nil {
+		return err
+	}
+
 	// Import data
+	chunkPath := f.getChunckPath(index)
 	if err := os.WriteFile(chunkPath, data, 0644); err != nil {
 		return err
 	}
@@ -112,6 +123,7 @@ func (f *file) ImportChunk(ctx context.Context, index int, data []byte) error {
 	return nil
 }
 
+// GetInfo returns the file info.
 func (f *file) GetInfo(_ context.Context) (info.File, error) {
 	return readMetadata(f.path)
 }
@@ -148,9 +160,10 @@ func (f *file) checkReadWriteChunkParams(info info.File, index int, offset int) 
 	return nil
 }
 
+// WriteChunk writes a chunk of data.
 func (f *file) WriteChunk(ctx context.Context, index int, data []byte, offset int) (int, error) {
 	// Get info
-	info, err := f.GetInfo(context.Background())
+	info, err := f.GetInfo(ctx)
 	if err != nil {
 		return 0, err
 	}
@@ -182,9 +195,10 @@ func (f *file) WriteChunk(ctx context.Context, index int, data []byte, offset in
 	return n, file.Close()
 }
 
+// ReadChunk reads a chunk of data.
 func (f *file) ReadChunk(ctx context.Context, index int, data []byte, offset int) (int, error) {
 	// Get info
-	info, err := f.GetInfo(context.Background())
+	info, err := f.GetInfo(ctx)
 	if err != nil {
 		return 0, err
 	}
@@ -204,6 +218,7 @@ func (f *file) ReadChunk(ctx context.Context, index int, data []byte, offset int
 	return copy(data, chunkData[offset:]), nil
 }
 
+// ResizeChunksNb resizes the number of chunks.
 func (f *file) ResizeChunksNb(ctx context.Context, size int) error {
 	// Check size is correct
 	if size < 0 {
@@ -246,6 +261,30 @@ func (f *file) ResizeChunksNb(ctx context.Context, size int) error {
 	return f.saveInfo(info)
 }
 
+func (f *file) checkResizeLastChunkParams(info info.File, size int) error {
+	// Check size is correct
+	if size < 0 || size > info.ChunkSize {
+		return fmt.Errorf("%w: %d", storage.ErrInvalidChunkSize, size)
+	}
+
+	// Check if there is a last chunk
+	if info.ChunksCount == 0 {
+		return fmt.Errorf("%w", storage.ErrNoChunk)
+	}
+
+	// Check if the last chunk is present
+	lastChunkPath := f.getChunckPath(info.ChunksCount - 1)
+	if _, err := os.Stat(lastChunkPath); err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("%w", storage.ErrChunkNotFound)
+		}
+		return err
+	}
+
+	return nil
+}
+
+// ResizeLastChunk resizes the last chunk.
 func (f *file) ResizeLastChunk(ctx context.Context, size int) (changed int, err error) {
 	// Get actual info
 	info, err := f.GetInfo(ctx)
@@ -253,26 +292,13 @@ func (f *file) ResizeLastChunk(ctx context.Context, size int) (changed int, err 
 		return 0, err
 	}
 
-	// Check size is correct
-	if size < 0 || size > info.ChunkSize {
-		return 0, fmt.Errorf("%w: %d", storage.ErrInvalidChunkSize, size)
-	}
-
-	// Check if there is a last chunk
-	if info.ChunksCount == 0 {
-		return 0, fmt.Errorf("%w", storage.ErrNoChunk)
-	}
-
-	// Check if the last chunk is present
-	lastChunkPath := f.getChunckPath(info.ChunksCount - 1)
-	if _, err := os.Stat(lastChunkPath); err != nil {
-		if os.IsNotExist(err) {
-			return 0, fmt.Errorf("%w", storage.ErrChunkNotFound)
-		}
+	// Check params
+	if err := f.checkResizeLastChunkParams(info, size); err != nil {
 		return 0, err
 	}
 
 	// Resize last chunk
+	lastChunkPath := f.getChunckPath(info.ChunksCount - 1)
 	lastChunkSize := info.LastChunkSize
 	if size > lastChunkSize {
 		// Append data

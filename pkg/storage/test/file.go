@@ -8,11 +8,13 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+// FileSuite is a test suite for storage.File implementations.
 type FileSuite struct {
 	Directory storage.Directory
 	suite.Suite
 }
 
+// TestCreateFile tests the creation of a file.
 func (suite *FileSuite) TestCreateFile() {
 	f, err := suite.Directory.CreateFile(context.Background(), "file", info.File{
 		ChunkSize: 4096,
@@ -25,6 +27,7 @@ func (suite *FileSuite) TestCreateFile() {
 	suite.Require().NotNil(rf)
 }
 
+// TestCreateFileOnExistingFile tests the creation of a file on an existing file.
 func (suite *FileSuite) TestCreateFileOnExistingFile() {
 	_, err := suite.Directory.CreateFile(context.Background(), "file", info.File{
 		ChunkSize: 4096,
@@ -37,6 +40,7 @@ func (suite *FileSuite) TestCreateFileOnExistingFile() {
 	suite.Require().ErrorIs(err, storage.ErrFileAlreadyExists)
 }
 
+// TestCreateFileOnExistingDirectory tests the creation of a file on an existing directory.
 func (suite *FileSuite) TestCreateFileOnExistingDirectory() {
 	_, err := suite.Directory.CreateDirectory(context.Background(), "file")
 	suite.Require().NoError(err)
@@ -47,6 +51,7 @@ func (suite *FileSuite) TestCreateFileOnExistingDirectory() {
 	suite.Require().ErrorIs(err, storage.ErrDirectoryAlreadyExists)
 }
 
+// TestCreateFileWithZeroChunkSize tests the creation of a file with a zero chunk size.
 func (suite *FileSuite) TestCreateFileWithZeroChunkSize() {
 	_, err := suite.Directory.CreateFile(context.Background(), "file", info.File{
 		ChunkSize: 0,
@@ -54,7 +59,8 @@ func (suite *FileSuite) TestCreateFileWithZeroChunkSize() {
 	suite.Require().ErrorIs(err, storage.ErrInvalidChunkSize)
 }
 
-func (suite *FileSuite) TestIsFileWhenIsDirectory() {
+// TestGetFileWhenIsDirectory tests the GetFile method on a directory.
+func (suite *FileSuite) TestGetFileWhenIsDirectory() {
 	_, err := suite.Directory.CreateDirectory(context.Background(), "file")
 	suite.Require().NoError(err)
 
@@ -62,6 +68,7 @@ func (suite *FileSuite) TestIsFileWhenIsDirectory() {
 	suite.Require().ErrorIs(err, storage.ErrIsDirectory)
 }
 
+// TestGetInfoFromEmptyFile tests the GetInfo method on an empty file.
 func (suite *FileSuite) TestGetInfoFromEmptyFile() {
 	f, err := suite.Directory.CreateFile(context.Background(), "file", info.File{
 		ChunkSize: 4096,
@@ -79,6 +86,7 @@ func (suite *FileSuite) TestGetInfoFromEmptyFile() {
 	}, fInfo)
 }
 
+// TestResizeChunksNb tests the ResizeChunksNb method.
 func (suite *FileSuite) TestResizeChunksNb() {
 	f, err := suite.Directory.CreateFile(context.Background(), "file", info.File{
 		ChunkSize: 4096,
@@ -102,6 +110,7 @@ func (suite *FileSuite) TestResizeChunksNb() {
 	suite.Require().Equal(5, info.ChunksCount)
 }
 
+// TestResizeLastChunk tests the ResizeLastChunk method.
 func (suite *FileSuite) TestResizeLastChunk() {
 	f, err := suite.Directory.CreateFile(context.Background(), "file", info.File{
 		ChunkSize: 4096,
@@ -131,6 +140,8 @@ func (suite *FileSuite) TestResizeLastChunk() {
 	suite.Require().Equal(1234, info.LastChunkSize)
 }
 
+// TestResizeLastChunkWithInvalidSizes tests the ResizeLastChunk method with invalid
+// sizes.
 func (suite *FileSuite) TestResizeLastChunkWithInvalidSizes() {
 	f, err := suite.Directory.CreateFile(context.Background(), "file", info.File{
 		ChunkSize: 4096,
@@ -144,6 +155,7 @@ func (suite *FileSuite) TestResizeLastChunkWithInvalidSizes() {
 	suite.Require().ErrorIs(err, storage.ErrInvalidChunkSize)
 }
 
+// TestReadWriteChunk tests the ReadChunk and WriteChunk methods.
 func (suite *FileSuite) TestReadWriteChunk() {
 	// Create file
 	f, err := suite.Directory.CreateFile(context.Background(), "file", info.File{
@@ -168,6 +180,7 @@ func (suite *FileSuite) TestReadWriteChunk() {
 	suite.Require().Equal(buf, rbuf[:len(buf)])
 }
 
+// TestImportChunk tests the ImportChunk method.
 func (suite *FileSuite) TestImportChunk() {
 	// Create file
 	f, err := suite.Directory.CreateFile(context.Background(), "file", info.File{
@@ -189,6 +202,8 @@ func (suite *FileSuite) TestImportChunk() {
 	suite.Require().Equal(chunk[:13], rbuf[:13])
 }
 
+// TestImportAlreadyExistingChunk tests the ImportChunk method with an already existing
+// chunk.
 func (suite *FileSuite) TestImportAlreadyExistingChunk() {
 	// Create file
 	f, err := suite.Directory.CreateFile(context.Background(), "file", info.File{
@@ -206,6 +221,7 @@ func (suite *FileSuite) TestImportAlreadyExistingChunk() {
 	suite.Require().ErrorIs(err, storage.ErrChunkAlreadyExists)
 }
 
+// TestImportTooBigChunk tests the ImportChunk method with a too big chunk.
 func (suite *FileSuite) TestImportTooBigChunk() {
 	// Create file
 	f, err := suite.Directory.CreateFile(context.Background(), "file", info.File{
@@ -220,6 +236,8 @@ func (suite *FileSuite) TestImportTooBigChunk() {
 	suite.Require().ErrorIs(err, storage.ErrInvalidChunkSize)
 }
 
+// TestReadChunkWithBiggerBufferThanChunk tests the ReadChunk method with a buffer
+// bigger than the chunk.
 func (suite *FileSuite) TestReadChunkWithBiggerBufferThanChunk() {
 	// Create file
 	f, err := suite.Directory.CreateFile(context.Background(), "file", info.File{

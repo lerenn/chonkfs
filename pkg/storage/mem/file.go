@@ -74,7 +74,7 @@ func (f *file) checkReadWriteChunkParams(index int, offset int) error {
 	return nil
 }
 
-func (f *file) WriteChunk(ctx context.Context, index int, data []byte, offset int) (int, error) {
+func (f *file) WriteChunk(_ context.Context, index int, data []byte, offset int) (int, error) {
 	// Check params
 	if err := f.checkReadWriteChunkParams(index, offset); err != nil {
 		return 0, err
@@ -84,7 +84,7 @@ func (f *file) WriteChunk(ctx context.Context, index int, data []byte, offset in
 	return copy(f.chunks[index].Data[offset:], data), nil
 }
 
-func (f *file) ReadChunk(ctx context.Context, index int, data []byte, offset int) (int, error) {
+func (f *file) ReadChunk(_ context.Context, index int, data []byte, offset int) (int, error) {
 	// Check params
 	if err := f.checkReadWriteChunkParams(index, offset); err != nil {
 		return 0, err
@@ -94,7 +94,7 @@ func (f *file) ReadChunk(ctx context.Context, index int, data []byte, offset int
 	return copy(data, f.chunks[index].Data[offset:]), nil
 }
 
-func (f *file) ResizeChunksNb(ctx context.Context, size int) error {
+func (f *file) ResizeChunksNb(_ context.Context, size int) error {
 	// Check size is correct
 	if size < 0 {
 		return fmt.Errorf("%w: %d", storage.ErrInvalidChunkNb, size)
@@ -125,7 +125,7 @@ func (f *file) ResizeChunksNb(ctx context.Context, size int) error {
 	return nil
 }
 
-func (f *file) ResizeLastChunk(ctx context.Context, size int) (changed int, err error) {
+func (f *file) ResizeLastChunk(_ context.Context, size int) (changed int, err error) {
 	// Check size is correct
 	if size < 0 || size > f.chunkSize {
 		return 0, fmt.Errorf("%w: %d", storage.ErrInvalidChunkSize, size)
@@ -159,7 +159,7 @@ func (f *file) ResizeLastChunk(ctx context.Context, size int) (changed int, err 
 	return size - oldSize, nil
 }
 
-func (f *file) ImportChunk(ctx context.Context, index int, data []byte) error {
+func (f *file) ImportChunk(_ context.Context, index int, data []byte) error {
 	// Check if chunk index is correct
 	if index < 0 || index >= len(f.chunks) {
 		return fmt.Errorf("%w: %d", storage.ErrInvalidChunkNb, index)

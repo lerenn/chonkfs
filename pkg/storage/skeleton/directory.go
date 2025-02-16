@@ -8,54 +8,79 @@ import (
 	"github.com/lerenn/chonkfs/pkg/storage"
 )
 
-var _ storage.Directory = &Directory{}
+var _ storage.Directory = &directory{}
 
-type Directory struct{}
+type directory struct{}
 
-func NewDirectory() *Directory {
-	return &Directory{}
+// NewDirectory creates a new directory representation.
+func NewDirectory() storage.Directory {
+	return &directory{}
 }
 
-func (d *Directory) CreateDirectory(_ context.Context, name string) (storage.Directory, error) {
+// CreateDirectory creates a directory.
+func (d *directory) CreateDirectory(_ context.Context, _ string) (storage.Directory, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (d *Directory) GetDirectory(_ context.Context, name string) (storage.Directory, error) {
+// GetDirectory returns a directory.
+func (d *directory) GetDirectory(_ context.Context, _ string) (storage.Directory, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (d *Directory) GetInfo(_ context.Context) (info.Directory, error) {
+// GetInfo returns the directory info.
+func (d *directory) GetInfo(_ context.Context) (info.Directory, error) {
 	return info.Directory{}, fmt.Errorf("not implemented")
 }
 
-func (d *Directory) CreateFile(_ context.Context, name string, info info.File) (storage.File, error) {
+// CreateFile creates a file.
+func (d *directory) CreateFile(_ context.Context, _ string, info info.File) (storage.File, error) {
+	_, _ = newFile(info)
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (d *Directory) GetFile(ctx context.Context, name string) (storage.File, error) {
+// GetFile returns a file.
+func (d *directory) GetFile(_ context.Context, _ string) (storage.File, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (d *Directory) ListFiles(ctx context.Context) (map[string]storage.File, error) {
+// ListFiles returns a map of files.
+func (d *directory) ListFiles(_ context.Context) (map[string]storage.File, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (d *Directory) RemoveDirectory(ctx context.Context, name string) error {
+// RemoveDirectory removes a directory.
+func (d *directory) RemoveDirectory(_ context.Context, _ string) error {
 	return fmt.Errorf("not implemented")
 }
 
-func (d *Directory) ListDirectories(ctx context.Context) (map[string]storage.Directory, error) {
+// ListDirectories returns a map of directories.
+func (d *directory) ListDirectories(_ context.Context) (map[string]storage.Directory, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (d *Directory) RemoveFile(ctx context.Context, name string) error {
+// RemoveFile removes a file.
+func (d *directory) RemoveFile(_ context.Context, _ string) error {
 	return fmt.Errorf("not implemented")
 }
 
-func (d *Directory) RenameFile(ctx context.Context, name string, newParent storage.Directory, newName string, noReplace bool) error {
+// RenameFile renames a file.
+func (d *directory) RenameFile(
+	_ context.Context,
+	_ string,
+	_ storage.Directory,
+	_ string,
+	_ bool,
+) error {
 	return fmt.Errorf("not implemented")
 }
 
-func (d *Directory) RenameDirectory(ctx context.Context, name string, newParent storage.Directory, newName string, noReplace bool) error {
+// RenameDirectory renames a directory.
+func (d *directory) RenameDirectory(
+	_ context.Context,
+	_ string,
+	_ storage.Directory,
+	_ string,
+	_ bool,
+) error {
 	return fmt.Errorf("not implemented")
 }

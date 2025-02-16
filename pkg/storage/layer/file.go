@@ -12,14 +12,12 @@ import (
 var _ storage.File = (*file)(nil)
 
 type file struct {
-	chunkSize  int
 	upperlayer storage.File
 	underlayer storage.File
 }
 
-func newFile(upperlayer storage.File, underlayer storage.File, info info.File) *file {
+func newFile(upperlayer storage.File, underlayer storage.File) *file {
 	return &file{
-		chunkSize:  info.ChunkSize,
 		upperlayer: upperlayer,
 		underlayer: underlayer,
 	}
@@ -96,12 +94,12 @@ func (f *file) ResizeLastChunk(ctx context.Context, size int) (int, error) {
 	}
 
 	// Import it from underlayer
-	return changed, f.importChunkFromUnderlayer(ctx, info.ChunksCount-1)
+	return changed, f.importChunkFromUnderlayer(ctx, info, info.ChunksCount-1)
 }
 
-func (f *file) importChunkFromUnderlayer(ctx context.Context, index int) error {
+func (f *file) importChunkFromUnderlayer(ctx context.Context, info info.File, index int) error {
 	// Get the chunk from underlayer
-	data := make([]byte, f.chunkSize)
+	data := make([]byte, info.ChunkSize)
 	read, err := f.underlayer.ReadChunk(ctx, index, data, 0)
 	if err != nil {
 		return err

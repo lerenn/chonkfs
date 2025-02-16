@@ -16,7 +16,7 @@ func newFile(_ info.File) (*file, error) {
 	return &file{}, nil
 }
 
-func (f *file) ImportChunk(ctx context.Context, index int, data []byte) error {
+func (f *file) ImportChunk(_ context.Context, _ int, _ []byte) error {
 	return fmt.Errorf("not implemented")
 }
 
@@ -24,18 +24,18 @@ func (f *file) GetInfo(_ context.Context) (info.File, error) {
 	return info.File{}, fmt.Errorf("not implemented")
 }
 
-func (f *file) WriteChunk(ctx context.Context, index int, data []byte, offset int) (int, error) {
+func (f *file) WriteChunk(_ context.Context, _ int, _ []byte, _ int) (int, error) {
 	return 0, fmt.Errorf("not implemented")
 }
 
-func (f *file) ReadChunk(ctx context.Context, index int, data []byte, offset int) (int, error) {
+func (f *file) ReadChunk(_ context.Context, _ int, _ []byte, _ int) (int, error) {
 	return 0, fmt.Errorf("not implemented")
 }
 
-func (f *file) ResizeChunksNb(ctx context.Context, size int) error {
+func (f *file) ResizeChunksNb(_ context.Context, _ int) error {
 	return fmt.Errorf("not implemented")
 }
 
-func (f *file) ResizeLastChunk(ctx context.Context, size int) (changed int, err error) {
+func (f *file) ResizeLastChunk(_ context.Context, _ int) (int, error) {
 	return 0, fmt.Errorf("not implemented")
 }

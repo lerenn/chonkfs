@@ -8,12 +8,14 @@ import (
 	"github.com/lerenn/chonkfs/pkg/storage/test"
 )
 
+// FileSuite is a test suite for the File layer.
 type FileSuite struct {
 	Upperlayer storage.Directory
 	Underlayer storage.Directory
 	test.FileSuite
 }
 
+// TestCreateFileAndCheckUnderlayer tests the creation of a file and checks if it exists on the underlayer.
 func (suite *FileSuite) TestCreateFileAndCheckUnderlayer() {
 	// Create a directory
 	_, err := suite.Directory.CreateFile(context.Background(), "FileA", info.File{
@@ -26,6 +28,7 @@ func (suite *FileSuite) TestCreateFileAndCheckUnderlayer() {
 	suite.Require().NoError(err)
 }
 
+// TestGetInfoWhenFileExistsOnlyOnUnderlayer tests the GetInfo method when the file exists only on the underlayer.
 func (suite *FileSuite) TestGetInfoWhenFileExistsOnlyOnUnderlayer() {
 	// Create a file on underlayer
 	_, err := suite.Underlayer.CreateFile(context.Background(), "FileA", info.File{
@@ -44,6 +47,7 @@ func (suite *FileSuite) TestGetInfoWhenFileExistsOnlyOnUnderlayer() {
 	suite.Require().Equal(4096, info.ChunkSize)
 }
 
+// TestResizeChunksNbOnBackendAndUnderlayer tests the ResizeChunksNb method on the backend and underlayer.
 func (suite *FileSuite) TestResizeChunksNbOnBackendAndUnderlayer() {
 	// Create a file
 	file, err := suite.Directory.CreateFile(context.Background(), "FileA", info.File{
@@ -70,6 +74,7 @@ func (suite *FileSuite) TestResizeChunksNbOnBackendAndUnderlayer() {
 	suite.Require().Equal(3, info.ChunksCount)
 }
 
+// TestResizeChunksNbOnUnderlayerOnly tests the ResizeChunksNb method on the underlayer only.
 func (suite *FileSuite) TestResizeChunksNbOnUnderlayerOnly() {
 	// Create a file on underlayer
 	_, err := suite.Underlayer.CreateFile(context.Background(), "FileA", info.File{
@@ -100,6 +105,7 @@ func (suite *FileSuite) TestResizeChunksNbOnUnderlayerOnly() {
 	suite.Require().Equal(3, info.ChunksCount)
 }
 
+// TestResizeLastChunkOnBackendAndUnderlayer tests the ResizeLastChunk method on the backend and underlayer.
 func (suite *FileSuite) TestResizeLastChunkOnBackendAndUnderlayer() {
 	// Create a file
 	file, err := suite.Directory.CreateFile(context.Background(), "FileA", info.File{
@@ -131,6 +137,7 @@ func (suite *FileSuite) TestResizeLastChunkOnBackendAndUnderlayer() {
 	suite.Require().Equal(2048, info.LastChunkSize)
 }
 
+// TestResizeLastChunkOnUnderlayerOnly tests the ResizeLastChunk method on the underlayer only.
 func (suite *FileSuite) TestResizeLastChunkOnUnderlayerOnly() {
 	// Create a file on underlayer
 	ufile, err := suite.Underlayer.CreateFile(context.Background(), "FileA", info.File{
@@ -162,6 +169,7 @@ func (suite *FileSuite) TestResizeLastChunkOnUnderlayerOnly() {
 	suite.Require().Equal(2048, info.LastChunkSize)
 }
 
+// TestResizeLastChunkWhenUnderlayerOnly tests the ResizeLastChunk method when the file exists only on the underlayer.
 func (suite *FileSuite) TestResizeLastChunkWhenUnderlayerOnly() {
 	// Create a file on underlayer
 	ufile, err := suite.Underlayer.CreateFile(context.Background(), "FileA", info.File{
@@ -197,6 +205,7 @@ func (suite *FileSuite) TestResizeLastChunkWhenUnderlayerOnly() {
 	suite.Require().Equal(2048, info.LastChunkSize)
 }
 
+// TestReadChunkWhenUnderlayerOnly tests the ReadChunk method when the file exists only on the underlayer.
 func (suite *FileSuite) TestReadChunkWhenUnderlayerOnly() {
 	// Create a file on underlayer
 	ufile, err := suite.Underlayer.CreateFile(context.Background(), "FileA", info.File{
@@ -225,6 +234,7 @@ func (suite *FileSuite) TestReadChunkWhenUnderlayerOnly() {
 	suite.Require().Equal("Hello, World!", string(data[:13]))
 }
 
+// TestWriteChunkWhenUnderlayerOnly tests the WriteChunk method when the file exists only on the underlayer.
 func (suite *FileSuite) TestWriteChunkWhenUnderlayerOnly() {
 	// Create a file on underlayer
 	ufile, err := suite.Underlayer.CreateFile(context.Background(), "FileA", info.File{

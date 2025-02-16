@@ -347,7 +347,7 @@ func (d *Directory) Rename(
 	name string,
 	newParent fs.InodeEmbedder,
 	newName string,
-	flags uint32,
+	_ uint32,
 ) syscall.Errno {
 	d.PreHook()
 	defer d.PostHook()

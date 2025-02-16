@@ -8,12 +8,15 @@ import (
 	"github.com/lerenn/chonkfs/pkg/storage/test"
 )
 
+// DirectorySuite is a test suite for directories.
 type DirectorySuite struct {
 	Upperlayer storage.Directory
 	Underlayer storage.Directory
 	test.DirectorySuite
 }
 
+// TestGetInfoWhenDirectoryExistsOnlyOnUnderlayer tests the retrieval of info
+// when a directory only exists on the underlayer.
 func (suite *DirectorySuite) TestGetInfoWhenDirectoryExistsOnlyOnUnderlayer() {
 	// Create a directory
 	_, err := suite.Underlayer.CreateDirectory(context.Background(), "DirectoryA")
@@ -29,6 +32,8 @@ func (suite *DirectorySuite) TestGetInfoWhenDirectoryExistsOnlyOnUnderlayer() {
 	suite.Require().Equal(info.Directory{}, dirInfo)
 }
 
+// TestRemoveDirectoryOnBackendAndUnderlayer tests the removal of a directory
+// when it exists on both the backend and the underlayer.
 func (suite *DirectorySuite) TestRemoveDirectoryOnBackendAndUnderlayer() {
 	// Create a directory
 	_, err := suite.Directory.CreateDirectory(context.Background(), "Directory")
@@ -47,6 +52,7 @@ func (suite *DirectorySuite) TestRemoveDirectoryOnBackendAndUnderlayer() {
 	suite.Require().ErrorIs(err, storage.ErrDirectoryNotFound)
 }
 
+// TestRemoveDirectoryWhenOnlyOnUnderlayer tests the removal of a directory when it only exists on the underlayer.
 func (suite *DirectorySuite) TestRemoveDirectoryWhenOnlyOnUnderlayer() {
 	// Create a directory on underlayer
 	_, err := suite.Underlayer.CreateDirectory(context.Background(), "Directory")
@@ -65,6 +71,7 @@ func (suite *DirectorySuite) TestRemoveDirectoryWhenOnlyOnUnderlayer() {
 	suite.Require().ErrorIs(err, storage.ErrDirectoryNotFound)
 }
 
+// TestListFilesWithOneInUnderlayer tests the listing of files when there is one in the underlayer.
 func (suite *DirectorySuite) TestListFilesWithOneInUnderlayer() {
 	// Create a directory
 	_, err := suite.Underlayer.CreateDirectory(context.Background(), "Directory")
@@ -92,6 +99,7 @@ func (suite *DirectorySuite) TestListFilesWithOneInUnderlayer() {
 	suite.Require().Len(files, 3)
 }
 
+// TestGetFileWhenOnlyOnUnderlayer tests the retrieval of a file when it only exists on the underlayer.
 func (suite *DirectorySuite) TestGetFileWhenOnlyOnUnderlayer() {
 	// Create a file on underlayer
 	_, err := suite.Underlayer.CreateFile(context.Background(), "File", info.File{
@@ -105,6 +113,7 @@ func (suite *DirectorySuite) TestGetFileWhenOnlyOnUnderlayer() {
 	suite.Require().NotNil(file)
 }
 
+// TestGetDirectory tests the retrieval of a directory.
 func (suite *DirectorySuite) TestGetDirectory() {
 	// Create a directory
 	_, err := suite.Directory.CreateDirectory(context.Background(), "Directory")
@@ -116,6 +125,7 @@ func (suite *DirectorySuite) TestGetDirectory() {
 	suite.Require().NotNil(directory)
 }
 
+// TestGetDirectoryWhenOnlyOnUnderlayer tests the retrieval of a directory when it only exists on the underlayer.
 func (suite *DirectorySuite) TestGetDirectoryWhenOnlyOnUnderlayer() {
 	// Create a directory on underlayer
 	_, err := suite.Underlayer.CreateDirectory(context.Background(), "Directory")
@@ -127,6 +137,7 @@ func (suite *DirectorySuite) TestGetDirectoryWhenOnlyOnUnderlayer() {
 	suite.Require().NotNil(directory)
 }
 
+// TestCreateDirectory tests the creation of a directory.
 func (suite *DirectorySuite) TestCreateDirectory() {
 	// Create a directory
 	_, err := suite.Directory.CreateDirectory(context.Background(), "DirectoryA")
@@ -141,6 +152,8 @@ func (suite *DirectorySuite) TestCreateDirectory() {
 	suite.Require().NoError(err)
 }
 
+// TestCreateDirectoryWhenDirectoryAlreadyExists tests the creation of a directory
+// when a directory with the same name already exists.
 func (suite *DirectorySuite) TestCreateDirectoryWhenDirectoryAlreadyExists() {
 	// Create a directory
 	_, err := suite.Directory.CreateDirectory(context.Background(), "DirectoryA")
@@ -151,6 +164,8 @@ func (suite *DirectorySuite) TestCreateDirectoryWhenDirectoryAlreadyExists() {
 	suite.Require().ErrorIs(err, storage.ErrDirectoryAlreadyExists)
 }
 
+// TestCreateDirectoryWhenFileAlreadyExists tests the creation of a directory
+// when a file with the same name already exists.
 func (suite *DirectorySuite) TestCreateDirectoryWhenFileAlreadyExists() {
 	// Create a file
 	_, err := suite.Directory.CreateFile(context.Background(), "test", info.File{
@@ -163,6 +178,7 @@ func (suite *DirectorySuite) TestCreateDirectoryWhenFileAlreadyExists() {
 	suite.Require().ErrorIs(err, storage.ErrFileAlreadyExists)
 }
 
+// TestListDirectoriesWithOneInUnderlayer tests the listing of directories when there is one in the underlayer.
 func (suite *DirectorySuite) TestListDirectoriesWithOneInUnderlayer() {
 	// Create a file
 	_, err := suite.Underlayer.CreateFile(context.Background(), "File", info.File{
@@ -186,6 +202,8 @@ func (suite *DirectorySuite) TestListDirectoriesWithOneInUnderlayer() {
 	suite.Require().Len(dirs, 3)
 }
 
+// TestRemoveFileOnBackendAndUnderlayer tests the removal of a file when it
+// exists on both the backend and the underlayer.
 func (suite *DirectorySuite) TestRemoveFileOnBackendAndUnderlayer() {
 	// Create a directory
 	_, err := suite.Directory.CreateFile(context.Background(), "File", info.File{
@@ -206,6 +224,7 @@ func (suite *DirectorySuite) TestRemoveFileOnBackendAndUnderlayer() {
 	suite.Require().ErrorIs(err, storage.ErrFileNotFound)
 }
 
+// TestRemoveFileWhenOnlyOnUnderlayer tests the removal of a file when it only exists on the underlayer.
 func (suite *DirectorySuite) TestRemoveFileWhenOnlyOnUnderlayer() {
 	// Create a directory on underlayer
 	_, err := suite.Underlayer.CreateFile(context.Background(), "File", info.File{
@@ -226,6 +245,8 @@ func (suite *DirectorySuite) TestRemoveFileWhenOnlyOnUnderlayer() {
 	suite.Require().ErrorIs(err, storage.ErrFileNotFound)
 }
 
+// TestRenameFileOnBackendAndUnderlayer tests the renaming of a file when it
+// exists on both the backend and the underlayer.
 func (suite *DirectorySuite) TestRenameFileOnBackendAndUnderlayer() {
 	// Create a directory
 	_, err := suite.Directory.CreateFile(context.Background(), "File", info.File{
@@ -254,6 +275,7 @@ func (suite *DirectorySuite) TestRenameFileOnBackendAndUnderlayer() {
 	suite.Require().NoError(err)
 }
 
+// TestRenameFileWhenOnlyOnUnderlayer tests the renaming of a file when it only exists on the underlayer.
 func (suite *DirectorySuite) TestRenameFileWhenOnlyOnUnderlayer() {
 	// Create a directory on underlayer
 	_, err := suite.Underlayer.CreateFile(context.Background(), "File", info.File{
@@ -282,6 +304,8 @@ func (suite *DirectorySuite) TestRenameFileWhenOnlyOnUnderlayer() {
 	suite.Require().NoError(err)
 }
 
+// TestRenameOnBackendAndUnderlayer tests the renaming of a directory when it
+// exists on both the backend and the underlayer.
 func (suite *DirectorySuite) TestRenameOnBackendAndUnderlayer() {
 	// Create a directory
 	_, err := suite.Directory.CreateDirectory(context.Background(), "Directory")
@@ -308,6 +332,7 @@ func (suite *DirectorySuite) TestRenameOnBackendAndUnderlayer() {
 	suite.Require().NoError(err)
 }
 
+// TestRenameDirectoryWhenOnlyOnUnderlayer tests the renaming of a directory when it only exists on the underlayer.
 func (suite *DirectorySuite) TestRenameDirectoryWhenOnlyOnUnderlayer() {
 	// Create a directory on underlayer
 	_, err := suite.Underlayer.CreateDirectory(context.Background(), "Directory")

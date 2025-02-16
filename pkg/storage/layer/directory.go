@@ -15,7 +15,8 @@ type directory struct {
 	underlayer storage.Directory
 }
 
-func NewDirectory(upperlayer storage.Directory, underlayer storage.Directory) (*directory, error) {
+// NewDirectory creates a new directory representation.
+func NewDirectory(upperlayer storage.Directory, underlayer storage.Directory) (storage.Directory, error) {
 	if upperlayer == nil {
 		return nil, errors.New("upperlayer is required")
 	}
@@ -126,6 +127,21 @@ func (d *directory) GetDirectory(ctx context.Context, name string) (storage.Dire
 	return NewDirectory(upperlayer, underlayer)
 }
 
+func (d *directory) createFileFromUnderlayer(
+	ctx context.Context,
+	name string,
+	underlayer storage.File,
+) (storage.File, error) {
+	// Get the info from the underlayer
+	info, err := underlayer.GetInfo(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a new file on the upperlayer
+	return d.upperlayer.CreateFile(ctx, name, info)
+}
+
 // GetFile returns a child file.
 func (d *directory) GetFile(ctx context.Context, name string) (storage.File, error) {
 	var underlayer storage.File
@@ -138,7 +154,6 @@ func (d *directory) GetFile(ctx context.Context, name string) (storage.File, err
 	}
 
 	// Get the directory from the upperlayer
-	var info info.File
 	upperlayerFile, err := d.upperlayer.GetFile(ctx, name)
 	if err != nil {
 		// If there is an error and it's not a file not found error
@@ -146,27 +161,13 @@ func (d *directory) GetFile(ctx context.Context, name string) (storage.File, err
 			return nil, err
 		}
 
-		// Get the info from the underlayer
-		info, err = underlayer.GetInfo(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		// Create a new file on the upperlayer
-		upperlayerFile, err = d.upperlayer.CreateFile(ctx, name, info)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		// Get the info from the upperlayer
-		info, err = upperlayerFile.GetInfo(ctx)
-		if err != nil {
+		if upperlayerFile, err = d.createFileFromUnderlayer(ctx, name, underlayer); err != nil {
 			return nil, err
 		}
 	}
 
 	// Return the directory
-	return newFile(upperlayerFile, underlayer, info), nil
+	return newFile(upperlayerFile, underlayer), nil
 }
 
 // ListDirectories returns a map of directories.
@@ -226,7 +227,7 @@ func (d *directory) CreateFile(ctx context.Context, name string, info info.File)
 	}
 
 	// Return the new directory
-	return newFile(upperlayerFile, underlayerChild, info), nil
+	return newFile(upperlayerFile, underlayerChild), nil
 }
 
 // RemoveDirectory removes a child directory of the directory.

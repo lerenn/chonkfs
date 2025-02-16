@@ -14,13 +14,15 @@ type directory struct {
 	files       map[string]storage.File
 }
 
-func NewDirectory() *directory {
+// NewDirectory creates a new directory.
+func NewDirectory() storage.Directory {
 	return &directory{
 		directories: make(map[string]storage.Directory),
 		files:       make(map[string]storage.File),
 	}
 }
 
+// CreateDirectory creates a directory.
 func (d *directory) CreateDirectory(_ context.Context, name string) (storage.Directory, error) {
 	// Check if there is a file with this name
 	if _, ok := d.files[name]; ok {
@@ -39,6 +41,7 @@ func (d *directory) CreateDirectory(_ context.Context, name string) (storage.Dir
 	return nd, nil
 }
 
+// GetDirectory returns a directory.
 func (d *directory) GetDirectory(_ context.Context, name string) (storage.Directory, error) {
 	// Check if there is a file with this name
 	if _, ok := d.files[name]; ok {
@@ -54,10 +57,12 @@ func (d *directory) GetDirectory(_ context.Context, name string) (storage.Direct
 	return nd, nil
 }
 
+// GetInfo returns the directory info.
 func (d *directory) GetInfo(_ context.Context) (info.Directory, error) {
 	return info.Directory{}, nil
 }
 
+// CreateFile creates a file.
 func (d *directory) CreateFile(_ context.Context, name string, info info.File) (storage.File, error) {
 	// Check if there is a file with this name
 	if _, ok := d.files[name]; ok {
@@ -81,7 +86,8 @@ func (d *directory) CreateFile(_ context.Context, name string, info info.File) (
 	return f, nil
 }
 
-func (d *directory) GetFile(ctx context.Context, name string) (storage.File, error) {
+// GetFile returns a file.
+func (d *directory) GetFile(_ context.Context, name string) (storage.File, error) {
 	// Check if there is a directory with this name
 	if _, ok := d.directories[name]; ok {
 		return nil, fmt.Errorf("%w: %q", storage.ErrIsDirectory, name)
@@ -96,11 +102,13 @@ func (d *directory) GetFile(ctx context.Context, name string) (storage.File, err
 	return f, nil
 }
 
-func (d *directory) ListFiles(ctx context.Context) (map[string]storage.File, error) {
+// ListFiles returns a map of files.
+func (d *directory) ListFiles(_ context.Context) (map[string]storage.File, error) {
 	return maps.Clone(d.files), nil
 }
 
-func (d *directory) RemoveDirectory(ctx context.Context, name string) error {
+// RemoveDirectory removes a directory.
+func (d *directory) RemoveDirectory(_ context.Context, name string) error {
 	// Check if there is a file with this name
 	if _, ok := d.files[name]; ok {
 		return fmt.Errorf("%w: %q", storage.ErrIsFile, name)
@@ -117,11 +125,13 @@ func (d *directory) RemoveDirectory(ctx context.Context, name string) error {
 	return nil
 }
 
-func (d *directory) ListDirectories(ctx context.Context) (map[string]storage.Directory, error) {
+// ListDirectories returns a map of directories.
+func (d *directory) ListDirectories(_ context.Context) (map[string]storage.Directory, error) {
 	return maps.Clone(d.directories), nil
 }
 
-func (d *directory) RemoveFile(ctx context.Context, name string) error {
+// RemoveFile removes a file.
+func (d *directory) RemoveFile(_ context.Context, name string) error {
 	// Check if there is a directory with this name
 	if _, ok := d.directories[name]; ok {
 		return fmt.Errorf("%w: %q", storage.ErrIsDirectory, name)
@@ -138,7 +148,14 @@ func (d *directory) RemoveFile(ctx context.Context, name string) error {
 	return nil
 }
 
-func (d *directory) RenameFile(ctx context.Context, name string, newParent storage.Directory, newName string, noReplace bool) error {
+// RenameFile renames a file.
+func (d *directory) RenameFile(
+	_ context.Context,
+	name string,
+	newParent storage.Directory,
+	newName string,
+	noReplace bool,
+) error {
 	// Check if there is a file with this name
 	if _, ok := d.files[name]; !ok {
 		return fmt.Errorf("%w: %q", storage.ErrFileNotFound, name)
@@ -173,7 +190,14 @@ func (d *directory) RenameFile(ctx context.Context, name string, newParent stora
 	return nil
 }
 
-func (d *directory) RenameDirectory(ctx context.Context, name string, newParent storage.Directory, newName string, noReplace bool) error {
+// RenameDirectory renames a directory.
+func (d *directory) RenameDirectory(
+	_ context.Context,
+	name string,
+	newParent storage.Directory,
+	newName string,
+	noReplace bool,
+) error {
 	// Check if there is a directory with this name
 	if _, ok := d.directories[name]; !ok {
 		return fmt.Errorf("%w: %q", storage.ErrDirectoryNotFound, name)
