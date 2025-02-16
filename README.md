@@ -26,22 +26,21 @@ flowchart LR
     User --File Operations<br/>through FUSE--> FuseWrapper
     subgraph "ChonkFS"
         FuseWrapper[FuseWrapper<br><i>Abstract FS specifics</i>] --> Chonker[Chonker<br><i>Split files/Join chunks</i>]
-        Chonker --Read/Store--> LayerRam
+        Chonker --Read/Store--> RAM
 
         subgraph "Storage"
-            subgraph LayerRam[Layer]
+            subgraph LayerRAM["Layer"]
                 RAM 
+                subgraph LayerDisk["Layer"]
+                    LocalDisk[Local Disk]
+                    FTP
+                end
             end
-            subgraph LayerDisk[Layer]
-                LocalDisk[Local Disk]
-            end
-            
-            FTP
         end
     end
 
-    LayerRam --> LayerDisk
-    LayerDisk --> FTP
+    RAM --> LocalDisk
+    LocalDisk --> FTP
 ```
 
 ## Storage
